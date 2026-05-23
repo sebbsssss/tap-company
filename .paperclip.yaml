@@ -1,0 +1,84 @@
+# Paperclip company manifest — TAP Automation
+# Declares adapter types per agent and the names of environment variables
+# the agents need. Values are NOT included — set them via Paperclip's
+# Configuration tab after import.
+
+version: 1
+
+adapters:
+  # All three agents run on the Claude adapter since our existing skills
+  # were authored as Anthropic skills. Use claude_code locally; switch to
+  # openclaw_gateway for a hosted Claude runtime if you don't want a local
+  # Claude Code install.
+  ceo:
+    type: claude_code
+    model: claude-sonnet-4-6
+    heartbeat_interval_seconds: 3600   # hourly
+  finance-lead:
+    type: claude_code
+    model: claude-sonnet-4-6
+    heartbeat_interval_seconds: 21600  # every 6 hours; bumped to hourly during month-end
+  ops-lead:
+    type: claude_code
+    model: claude-haiku-4-5-20251001   # haiku is fine for ticket triage
+    heartbeat_interval_seconds: 7200   # every 2 hours (matches existing ticket digest cadence)
+
+# Environment variables each agent needs. Set the actual VALUES via the
+# Paperclip UI (Agent → Configuration → env). Paperclip injects them at
+# heartbeat time alongside its own PAPERCLIP_* variables.
+env:
+  required:
+    # Xero — one per entity. The MCP picks the right one based on the
+    # XERO_TENANT_ID set on the agent.
+    - name: XERO_ACCESS_TOKEN
+      description: OAuth access token for Xero. Use the MCP's connect flow rather than pasting a raw token if possible.
+      agents: [finance-lead, ceo]
+    - name: XERO_TENANT_ID_TAP_COLIVINGS
+      description: UEN 202300680H — TAP Co-Livings Pte. Ltd. tenant ID in Xero.
+      agents: [finance-lead, ceo]
+    - name: XERO_TENANT_ID_TLKR
+      description: UEN 201901964D — TLKR Pte. Ltd. tenant ID in Xero.
+      agents: [finance-lead, ceo]
+
+    # CRM
+    - name: CRM_API_BASE
+      description: Defaults to https://crm-api.theassemblyplace.com — override only for staging.
+      agents: [finance-lead, ops-lead]
+    - name: CRM_STAFF_EMAIL
+      description: Staff email used in POST /com/auth/login/ to mint a staff DRF token. Required for /com/ endpoints. Token rotates on each login — agent calls login on every heartbeat.
+      agents: [finance-lead, ops-lead]
+    - name: CRM_STAFF_PASSWORD
+      description: Password for the staff email above. Stored encrypted by Paperclip.
+      agents: [finance-lead, ops-lead]
+    - name: CRM_MEMBER_EMAIL
+      description: Member account email used as a fallback to /member/auth/login/ when staff scope isn't required.
+      agents: [ops-lead]
+    - name: CRM_MEMBER_PASSWORD
+      description: Password for the member email above.
+      agents: [ops-lead]
+
+    # Twilio (Ops only)
+    - name: TWILIO_ACCOUNT_SID
+      agents: [ops-lead]
+    - name: TWILIO_AUTH_TOKEN
+      agents: [ops-lead]
+    - name: TWILIO_SANDBOX_FROM
+      description: e.g. whatsapp:+14155238886
+      agents: [ops-lead]
+
+  optional:
+    - name: SETTLEMENT_OUTPUT_DIR
+      description: Google Drive folder ID (or local path) where finalised settlement xlsx files land.
+      agents: [finance-lead]
+    - name: TWILIO_TEST_TO
+      description: Override recipient for dry-run digest sends (useful during validation).
+      agents: [ops-lead]
+
+# Approvals — what the board (Sebastien) must approve before agents act.
+approvals:
+  required_for:
+    - hire_request                # Agents can propose new hires; Sebastien approves.
+    - budget_override             # Raising a budget cap above its threshold.
+    - bank_reconciliation_click_ok  # NEVER auto-OK — always escalate the actual click to the human.
+    - settlement_letter_send      # Final xlsx delivery to owner requires human OK.
+    - mass_tenant_message         # Any send to >5 tenant phone numbers.
