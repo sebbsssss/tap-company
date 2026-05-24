@@ -55,16 +55,16 @@ The v4 rework is the gating dependency for sharing the brief with Yee Chin and t
 
 ```bash
 # Generate the latest brief for a given month
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/finance_brief.py \
+python3 ./scripts/finance_brief.py \
   --month 2026-05 \
   --output-folder "drive:CFO Briefs"
 
 # Generate only one entity's section (faster for iteration)
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/finance_brief.py \
+python3 ./scripts/finance_brief.py \
   --month 2026-05 --entity tlkr --output-folder "drive:CFO Briefs"
 
 # Use cached Xero exports (if you've already downloaded them to Drive)
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/finance_brief.py \
+python3 ./scripts/finance_brief.py \
   --month 2026-05 --xero-cache "drive:Xero Exports/2026-05" \
   --output-folder "drive:CFO Briefs"
 ```
@@ -77,7 +77,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/finance_brief.py \
 
 ## Status: working
 
-This skill now bundles a working `finance_brief.py` script (`${CLAUDE_PLUGIN_ROOT}/scripts/finance_brief.py`) that produces a real Markdown brief from the bundled `sample_finance_entities.json`. Run it as documented above — you get a brief ready to paste into Google Docs.
+This skill now bundles a working `finance_brief.py` script (`./scripts/finance_brief.py`) that produces a real Markdown brief from the bundled `sample_finance_entities.json`. Run it as documented above — you get a brief ready to paste into Google Docs.
 
 To use live data: replace `sample_finance_entities.json` with a freshly-pulled per-entity data file (same schema). When the CRM + Xero MCP servers ship, this becomes an automatic pull.
 

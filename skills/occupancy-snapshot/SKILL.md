@@ -41,18 +41,18 @@ For each block:
 
 ```bash
 # Refresh TLKR Campus (Block A + Block B)
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/occupancy.py \
+python3 ./scripts/occupancy.py \
   --property "TLKR Campus" \
   --period YTD \
   --output-dir "drive:Occupancy Dashboards"
 
 # A single block
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/occupancy.py \
+python3 ./scripts/occupancy.py \
   --property "116 LOR J TELOK KURAU" \
   --period YTD
 
 # As a live Cowork artifact instead of xlsx
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/occupancy.py \
+python3 ./scripts/occupancy.py \
   --property "TLKR Campus" --period YTD --format artifact
 ```
 

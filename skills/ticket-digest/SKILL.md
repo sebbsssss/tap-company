@@ -45,17 +45,17 @@ The script auto-prefers the staff token when both are set.
 
 ## How to run it
 
-Locate the digest script in this plugin's `scripts/` directory (after installation it lives at `${CLAUDE_PLUGIN_ROOT}/scripts/digest.py`).
+Locate the digest script in this plugin's `scripts/` directory (after installation it lives at `./scripts/digest.py`).
 
 ```bash
 # Send a real digest right now
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/digest.py --source api --send whatsapp
+python3 ./scripts/digest.py --source api --send whatsapp
 
 # Dry-run (print the digest to stdout, do not send)
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/digest.py --source api --send dry
+python3 ./scripts/digest.py --source api --send dry
 
 # Use bundled sample data (for first-install demo before token lands)
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/digest.py --source sample --send dry
+python3 ./scripts/digest.py --source sample --send dry
 ```
 
 Successful runs end with a line like `✓ Sent. SID: SM<…>  Status: queued`.

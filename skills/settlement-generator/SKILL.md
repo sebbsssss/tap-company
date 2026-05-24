@@ -48,19 +48,19 @@ Locate the generator scripts in this plugin's `scripts/` directory.
 
 ```bash
 # Standard monthly run
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/settlement.py \
+python3 ./scripts/settlement.py \
   --property "18 Jln Jintan" \
   --period 2026-03 \
   --output-dir "drive:Settlement Reports/2026"
 
 # Partial period
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/settlement.py \
+python3 ./scripts/settlement.py \
   --property "18 Jln Jintan" \
   --start 2026-05-01 --end 2026-05-11 \
   --output-dir "drive:Settlement Reports/2026"
 
 # Comparison mode (against an existing reference file)
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/settlement.py \
+python3 ./scripts/settlement.py \
   --property "18 Jln Jintan" --period 2026-03 \
   --compare-to "drive:fileId/abc123" \
   --output-dir "drive:Settlement Reports/2026"
@@ -119,7 +119,7 @@ The generated xlsx includes a **Utility Excess Detail** audit sheet showing per-
 Run with utility auto-fill:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/settlement.py \
+python3 ./scripts/settlement.py \
   --property "18 JALAN JINTAN" --landlord "Yeoh Joe Wei Evelyn" \
   --period 2026-03 \
   --roster crm_mar.json --xero xero_mar.json \
@@ -135,13 +135,13 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/settlement.py \
 
 ## Status: working
 
-This skill now bundles a working `settlement.py` script (`${CLAUDE_PLUGIN_ROOT}/scripts/settlement.py`) plus two demo configurations. Output is an xlsx in Finance's exact template with 33 formulas, all yellow input cells for the manual items (cleaning, utilities, deposits, servicing), and the straight-lease summary block at the bottom.
+This skill now bundles a working `settlement.py` script (`./scripts/settlement.py`) plus two demo configurations. Output is an xlsx in Finance's exact template with 33 formulas, all yellow input cells for the manual items (cleaning, utilities, deposits, servicing), and the straight-lease summary block at the bottom.
 
 Run it with bundled samples to see the exact format Finance expects:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/settlement.py --sample 18jln_jintan-mar26 --output ./mar.xlsx
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/settlement.py --sample 18jln_jintan-may1-11 --output ./may_partial.xlsx
+python3 ./scripts/settlement.py --sample 18jln_jintan-mar26 --output ./mar.xlsx
+python3 ./scripts/settlement.py --sample 18jln_jintan-may1-11 --output ./may_partial.xlsx
 ```
 
 To use your own data, supply `--roster` (CRM tenant roster as JSON) and `--xero` (P&L data as JSON). The schemas are documented in `settlement.py` and matched against samples bundled at `scripts/sample_roster_*.json` + `scripts/sample_xero_*.json`.

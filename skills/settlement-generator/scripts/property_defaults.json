@@ -1,0 +1,31 @@
+{
+  "_comment": "Per-property standing values for the settlement generator. When a property is listed here, the settlement script auto-fills these rows instead of leaving them as yellow input cells. Confirmed values only — empty defaults remain yellow inputs.",
+  "_last_updated": "2026-05-20",
+  "_property_kind_values": "co_living | campus. co_living applies the Excess Utility rule (per-unit / per-room cap, excess split evenly across tenants). campus skips the utility row entirely — TLKR Campus tenants have no utility caps because the company absorbs all utility costs (confirmed in Notion meeting 12 May 2026).",
+  "18 JALAN JINTAN": {
+    "postal": "Singapore 229011",
+    "landlord": "Yeoh Joe Wei Evelyn",
+    "entity": "TAP Co-Livings Pte. Ltd.",
+    "property_kind": "co_living",
+    "cleaning": {
+      "qty": 4,
+      "unit_price": 180.00,
+      "note": "Standing monthly arrangement — confirmed 18 May 2026 from a Finance reference file."
+    },
+    "straight_lease_base_rent_per_month": 6000.00
+  },
+  "TLKR CAMPUS BLOCK A": {
+    "postal": "Singapore (Telok Kurau)",
+    "landlord": "TBC",
+    "entity": "TLKR Pte. Ltd.",
+    "property_kind": "campus",
+    "_note": "Campus tenants have NO utility caps — company absorbs all utility costs. Settlement utility row is auto-set to $0 with explanatory note."
+  },
+  "TLKR CAMPUS BLOCK B": {
+    "postal": "Singapore (Telok Kurau)",
+    "landlord": "TBC",
+    "entity": "TLKR Pte. Ltd.",
+    "property_kind": "campus",
+    "_note": "Campus tenants have NO utility caps — company absorbs all utility costs. Settlement utility row is auto-set to $0 with explanatory note."
+  }
+}

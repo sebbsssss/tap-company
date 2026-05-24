@@ -1,0 +1,8 @@
+[
+  {"tenant": "Guan Mingjun",   "room": "B01", "duration": "Extend 1 months",  "month_of": "1/1",  "rental_rate": 2800.00, "rental_date": "1 Mar 26",  "lease_end": "31 Mar 26"},
+  {"tenant": "Xu Jia",         "room": "B02", "duration": "Extend 12 months", "month_of": "1/12", "rental_rate": 3000.00, "rental_date": "27 Mar 26", "lease_end": "26 Mar 27"},
+  {"tenant": "Wan Ying Zhang", "room": "B03", "duration": "Extend 1 months",  "month_of": "1/1",  "rental_rate": 2600.00, "rental_date": "11 Mar 26", "lease_end": "10 Apr 26"},
+  {"tenant": "An Qi",          "room": "B04", "duration": "12 months",        "month_of": "1/12", "rental_rate": 3100.00, "rental_date": "25 Mar 26", "lease_end": "24 Mar 27"},
+  {"tenant": "Zhu Yichen",     "room": "B05", "duration": "Extend 3 months",  "month_of": "1/3",  "rental_rate": 2750.00, "rental_date": "23 Mar 26", "lease_end": "22 Jun 26"},
+  {"tenant": "Drishti Sehgal", "room": "B06", "duration": "Extend 8 months",  "month_of": "1/8",  "rental_rate": 3100.00, "rental_date": "23 Mar 26", "lease_end": "22 Nov 26"}
+]

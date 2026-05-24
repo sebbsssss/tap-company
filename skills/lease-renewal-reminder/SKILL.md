@@ -33,16 +33,16 @@ Run this skill when the user asks for any of:
 
 ```bash
 # Build the queue of upcoming renewals (no sends)
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/renewals.py --window 60 --dry-run
+python3 ./scripts/renewals.py --window 60 --dry-run
 
 # Draft personalised messages for everyone in the queue (no sends)
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/renewals.py --window 60 --draft-only --output-dir "drive:Renewal Queue/$(date +%Y-%m)"
+python3 ./scripts/renewals.py --window 60 --draft-only --output-dir "drive:Renewal Queue/$(date +%Y-%m)"
 
 # Send to one specific tenant by booking ID
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/renewals.py --booking-id 12345 --send
+python3 ./scripts/renewals.py --booking-id 12345 --send
 
 # Send the validated batch (requires --batch-file from a prior --draft-only run)
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/renewals.py --batch-file ./drafts.json --send
+python3 ./scripts/renewals.py --batch-file ./drafts.json --send
 ```
 
 ## Message template

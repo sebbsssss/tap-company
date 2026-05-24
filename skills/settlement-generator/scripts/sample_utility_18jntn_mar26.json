@@ -1,0 +1,22 @@
+{
+  "_period": "March 2026",
+  "_property": "18 JALAN JINTAN",
+  "_source": "CRM Operations → Excess Utility export (sample shape; real data lands via /com/operations/property-operations-data/{id}/utilities/ once staff API token is wired).",
+  "_methodology": "Per Notion meeting 12 May 2026: each booking has a utility cap. cap_mode=per_room means unit allowance = sum of per-room caps; cap_mode=per_unit means unit allowance = highest cap among bookings. Excess = max(0, actual_bill − unit_allowance), split evenly across all tenants in the unit.",
+  "units": [
+    {
+      "unit_id": "Whole shophouse",
+      "cap_mode": "per_room",
+      "actual_bill": 850.00,
+      "bill_period": "1–31 Mar 2026",
+      "bookings": [
+        {"tenant": "Guan Mingjun",   "room": "B01", "cap": 100.00},
+        {"tenant": "Xu Jia",         "room": "B02", "cap": 100.00},
+        {"tenant": "Wan Ying Zhang", "room": "B03", "cap": 100.00},
+        {"tenant": "An Qi",          "room": "B04", "cap": 100.00},
+        {"tenant": "Zhu Yichen",     "room": "B05", "cap": 100.00},
+        {"tenant": "Drishti Sehgal", "room": "B06", "cap": 100.00}
+      ]
+    }
+  ]
+}

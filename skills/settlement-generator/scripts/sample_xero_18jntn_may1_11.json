@@ -1,0 +1,7 @@
+{
+  "_period": "1 to 11 May 2026",
+  "_source": "Xero TAP Co-Livings P&L, Location=18 Jalan Jintan, 1-11 May 2026 (extracted 12 May 2026). Partial-period: base rent + additional rent to owner not yet booked in Xero for May (typical mid-month state).",
+  "base_rent": 6000.00,
+  "additional_rent": 0,
+  "mgmt_contract_rm": 38.00
+}

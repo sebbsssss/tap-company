@@ -1,0 +1,80 @@
+{
+  "_comment": "Sample entity data for the TAP CFO Brief v4 generator. Real numbers for TLKR + Co-Livings extracted from Xero (12-15 May 2026). Hotel + Service Apt are placeholders pending Xero access.",
+  "_extracted_at": "2026-05-15T10:00:00+08:00",
+  "_period_covered": "FY2026 YTD (Apr 2025 — early May 2026)",
+  "tlkr": {
+    "name": "TLKR Pte. Ltd. (Campus by The Assembly Place)",
+    "uen": "201901964D",
+    "status": "active",
+    "rental_income": 1010314.00,
+    "cost_of_sales": 69694.00,
+    "operating_expenses": 0,
+    "rooms_total": 80,
+    "rooms_occupied": 76,
+    "ar_total": 225171.07,
+    "ar_buckets": {
+      "current": 0,
+      "<30d": 91385.65,
+      "30-60d": 74804.92,
+      "60-90d": 25973.94,
+      ">90d": 33007.81
+    },
+    "notes": [
+      "Two-block campus: 116 LOR J (Block A) + 119 LOR K (Block B)",
+      "Block A net direct margin 97.7%; Block B 91.1%",
+      "Block B carries the worse AR position (27% of YTD rental in receivables vs 19% for A)",
+      "Block B direct expenses ~2× Block A — line-item review recommended",
+      "$58k of AR is >60 days — confirm dunning status with Finance"
+    ]
+  },
+  "colivings": {
+    "name": "TAP Co-livings Pte. Ltd.",
+    "uen": "202300680H",
+    "status": "active",
+    "rental_income": 340067.71,
+    "cost_of_sales": 459722.89,
+    "operating_expenses": 488160.84,
+    "rooms_total": null,
+    "rooms_occupied": null,
+    "ar_total": null,
+    "ar_buckets": {},
+    "notes": [
+      "Per-tenant settlement model (not per-block)",
+      "First end-to-end Settlement Generator run validated against Finance's 18 Jln Jintan March 2026 file — straight-lease net to owner matched to the cent (S$16,798.83)",
+      "B05 (Zhu Yichen) flagged: present in CRM March roster but excluded from Finance's settlement letter; awaiting Finance confirmation on exclusion rule",
+      "Properties cover 18 Jln Jintan, 18 Penhas, 51 Middle Rd, and others — full per-property occupancy + AR pending Location-tagged Xero extracts"
+    ]
+  },
+  "hotel": {
+    "name": "TAP Hotel entity (name TBD)",
+    "uen": null,
+    "status": "placeholder",
+    "rental_income": null,
+    "cost_of_sales": null,
+    "operating_expenses": null,
+    "rooms_total": null,
+    "rooms_occupied": null,
+    "ar_total": null,
+    "ar_buckets": {},
+    "notes": [
+      "Awaiting Xero org access from Finance",
+      "Entity name + UEN to be confirmed"
+    ]
+  },
+  "service_apt": {
+    "name": "TAP Service Apartment entity (name TBD)",
+    "uen": null,
+    "status": "placeholder",
+    "rental_income": null,
+    "cost_of_sales": null,
+    "operating_expenses": null,
+    "rooms_total": null,
+    "rooms_occupied": null,
+    "ar_total": null,
+    "ar_buckets": {},
+    "notes": [
+      "Awaiting Xero org access from Finance",
+      "Entity name + UEN to be confirmed"
+    ]
+  }
+}
