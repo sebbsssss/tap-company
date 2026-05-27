@@ -1,0 +1,360 @@
+{
+  "count": 14,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": "unit-001",
+      "number": "Room 1A",
+      "room_type": "room",
+      "occupancy_status": "Occupied",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p001-1",
+        "name": "Unit 1",
+        "prop": {
+          "id": "prop-001",
+          "name": "TAP @ Paya Lebar",
+          "property_type": "co-living",
+          "area": "Central",
+          "property_kind": {"id": 1, "name": "Co Living", "code": "CL"}
+        }
+      },
+      "occupancy_bookings": [
+        {
+          "id": "lease-001",
+          "move_in_date": "2026-01-01",
+          "lease_end_date": "2026-12-31",
+          "actual_lease_end_date": "2026-12-31",
+          "members": [{"id": "tenant-001", "name": "Alice Tan", "gender": "Female"}]
+        }
+      ],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-002",
+      "number": "Room 1B",
+      "room_type": "room",
+      "occupancy_status": "Occupied",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p001-2",
+        "name": "Unit 2",
+        "prop": {
+          "id": "prop-001",
+          "name": "TAP @ Paya Lebar",
+          "property_type": "co-living",
+          "area": "Central",
+          "property_kind": {"id": 1, "name": "Co Living", "code": "CL"}
+        }
+      },
+      "occupancy_bookings": [
+        {
+          "id": "lease-002",
+          "move_in_date": "2026-02-01",
+          "lease_end_date": "2026-07-31",
+          "actual_lease_end_date": "2026-07-31",
+          "members": [{"id": "tenant-002", "name": "Bob Lim", "gender": "Male"}]
+        }
+      ],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-003",
+      "number": "Room 2A",
+      "room_type": "room",
+      "occupancy_status": "Vacant",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p001-3",
+        "name": "Unit 3",
+        "prop": {
+          "id": "prop-001",
+          "name": "TAP @ Paya Lebar",
+          "property_type": "co-living",
+          "area": "Central",
+          "property_kind": {"id": 1, "name": "Co Living", "code": "CL"}
+        }
+      },
+      "occupancy_bookings": [],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-004",
+      "number": "Room 2B",
+      "room_type": "room",
+      "occupancy_status": "Occupied",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p001-4",
+        "name": "Unit 4",
+        "prop": {
+          "id": "prop-001",
+          "name": "TAP @ Paya Lebar",
+          "property_type": "co-living",
+          "area": "Central",
+          "property_kind": {"id": 1, "name": "Co Living", "code": "CL"}
+        }
+      },
+      "occupancy_bookings": [
+        {
+          "id": "lease-003",
+          "move_in_date": "2026-03-15",
+          "lease_end_date": "2026-09-14",
+          "actual_lease_end_date": "2026-09-14",
+          "members": [{"id": "tenant-003", "name": "Clara Ng", "gender": "Female"}]
+        }
+      ],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-005",
+      "number": "Studio 1",
+      "room_type": "studio",
+      "occupancy_status": "Vacant",
+      "booking_status": "Reserved",
+      "unit": {
+        "id": "u-p001-5",
+        "name": "Unit 5",
+        "prop": {
+          "id": "prop-001",
+          "name": "TAP @ Paya Lebar",
+          "property_type": "co-living",
+          "area": "Central",
+          "property_kind": {"id": 1, "name": "Co Living", "code": "CL"}
+        }
+      },
+      "occupancy_bookings": [],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-013",
+      "number": "Room 3A",
+      "room_type": "room",
+      "occupancy_status": "Occupied",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p001-13",
+        "name": "Unit 13",
+        "prop": {
+          "id": "prop-001",
+          "name": "TAP @ Paya Lebar",
+          "property_type": "co-living",
+          "area": "Central",
+          "property_kind": {"id": 1, "name": "Co Living", "code": "CL"}
+        }
+      },
+      "occupancy_bookings": [
+        {
+          "id": "lease-011",
+          "contract_start_date": "2026-04-01",
+          "move_in_date": null,
+          "lease_end_date": "2026-09-30",
+          "actual_lease_end_date": "2026-09-30",
+          "members": []
+        }
+      ],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-006",
+      "number": "Bed A1",
+      "room_type": "bed",
+      "occupancy_status": "Occupied",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p002-6",
+        "name": "Unit 6",
+        "prop": {
+          "id": "prop-002",
+          "name": "TAP @ Jurong East",
+          "property_type": "co-living",
+          "area": "West",
+          "property_kind": {"id": 1, "name": "Co Living", "code": "CL"}
+        }
+      },
+      "occupancy_bookings": [
+        {
+          "id": "lease-004",
+          "move_in_date": "2026-01-01",
+          "lease_end_date": "2026-06-30",
+          "actual_lease_end_date": "2026-06-30",
+          "members": [{"id": "tenant-004", "name": "David Chen", "gender": "Male"}]
+        }
+      ],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-007",
+      "number": "Bed A2",
+      "room_type": "bed",
+      "occupancy_status": "Occupied",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p002-7",
+        "name": "Unit 7",
+        "prop": {
+          "id": "prop-002",
+          "name": "TAP @ Jurong East",
+          "property_type": "co-living",
+          "area": "West",
+          "property_kind": {"id": 1, "name": "Co Living", "code": "CL"}
+        }
+      },
+      "occupancy_bookings": [
+        {
+          "id": "lease-005",
+          "move_in_date": "2026-04-01",
+          "lease_end_date": "2026-09-30",
+          "actual_lease_end_date": "2026-09-30",
+          "members": [{"id": "tenant-005", "name": "Eva Koh", "gender": "Female"}]
+        }
+      ],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-008",
+      "number": "Bed B1",
+      "room_type": "bed",
+      "occupancy_status": "Vacant",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p002-8",
+        "name": "Unit 8",
+        "prop": {
+          "id": "prop-002",
+          "name": "TAP @ Jurong East",
+          "property_type": "co-living",
+          "area": "West",
+          "property_kind": {"id": 1, "name": "Co Living", "code": "CL"}
+        }
+      },
+      "occupancy_bookings": [],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-009",
+      "number": "Bed B2",
+      "room_type": "bed",
+      "occupancy_status": "Vacant",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p002-9",
+        "name": "Unit 9",
+        "prop": {
+          "id": "prop-002",
+          "name": "TAP @ Jurong East",
+          "property_type": "co-living",
+          "area": "West",
+          "property_kind": {"id": 1, "name": "Co Living", "code": "CL"}
+        }
+      },
+      "occupancy_bookings": [],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-014",
+      "number": "Bed C1",
+      "room_type": "bed",
+      "occupancy_status": "Occupied",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p002-14",
+        "name": "Unit 14",
+        "prop": {
+          "id": "prop-002",
+          "name": "TAP @ Jurong East",
+          "property_type": "co-living",
+          "area": "West",
+          "property_kind": {"id": 1, "name": "Co Living", "code": "CL"}
+        }
+      },
+      "occupancy_bookings": [
+        {
+          "id": "lease-008",
+          "move_in_date": "2026-05-15",
+          "lease_end_date": "2026-11-14",
+          "actual_lease_end_date": "2026-11-14",
+          "members": [{"id": "tenant-008", "name": "Henry Ong", "gender": "Male"}]
+        }
+      ],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-010",
+      "number": "Apt 01",
+      "room_type": "studio",
+      "occupancy_status": "Occupied",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p003-10",
+        "name": "Unit 10",
+        "prop": {
+          "id": "prop-003",
+          "name": "TAP @ Novena",
+          "property_type": "serviced-apartment",
+          "area": "Central",
+          "property_kind": {"id": 2, "name": "Serviced Apartment", "code": "SA"}
+        }
+      },
+      "occupancy_bookings": [
+        {
+          "id": "lease-006",
+          "move_in_date": "2026-01-15",
+          "lease_end_date": "2026-07-14",
+          "actual_lease_end_date": "2026-07-14",
+          "members": [{"id": "tenant-006", "name": "Frank Wu", "gender": "Male"}]
+        }
+      ],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-011",
+      "number": "Apt 02",
+      "room_type": "studio",
+      "occupancy_status": "Occupied",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p003-11",
+        "name": "Unit 11",
+        "prop": {
+          "id": "prop-003",
+          "name": "TAP @ Novena",
+          "property_type": "serviced-apartment",
+          "area": "Central",
+          "property_kind": {"id": 2, "name": "Serviced Apartment", "code": "SA"}
+        }
+      },
+      "occupancy_bookings": [
+        {
+          "id": "lease-007",
+          "move_in_date": "2026-05-01",
+          "lease_end_date": "2026-10-31",
+          "actual_lease_end_date": "2026-10-31",
+          "members": [{"id": "tenant-007", "name": "Grace Lee", "gender": "Female"}]
+        }
+      ],
+      "future_bookings": []
+    },
+    {
+      "id": "unit-012",
+      "number": "Apt 03",
+      "room_type": "studio",
+      "occupancy_status": "Vacant",
+      "booking_status": "Available",
+      "unit": {
+        "id": "u-p003-12",
+        "name": "Unit 12",
+        "prop": {
+          "id": "prop-003",
+          "name": "TAP @ Novena",
+          "property_type": "serviced-apartment",
+          "area": "Central",
+          "property_kind": {"id": 2, "name": "Serviced Apartment", "code": "SA"}
+        }
+      },
+      "occupancy_bookings": [],
+      "future_bookings": []
+    }
+  ]
+}

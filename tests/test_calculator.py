@@ -61,7 +61,8 @@ def test_compute_property_occupancy_finance_rate(data):
     po = compute_property_occupancy(prop, data, "2026-05")
     assert po.total_available == 6
     # Units 1,2,4 have active leases overlapping May.
-    # lease-011 on unit-013: contract_start=2026-04-01, contract_end=2026-09-30 -> overlaps May.
+    # unit-013: lease-011 uses contract_start_date=2026-04-01 (move_in_date=null → DQ issue),
+    #   contract_end=2026-09-30 → overlaps May.
     # Units 3 and 5 have no active lease overlapping May.
     assert po.finance_occupied == 4
     assert po.finance_rate == pytest.approx(4 / 6)

@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Co-Living Occupancy Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f8f9fa;--surface:#fff;--border:#e2e8f0;
+  --text:#1a202c;--text2:#4a5568;--muted:#718096;
+  --accent:#3182ce;--accent-bg:#ebf8ff;
+  --ok:#38a169;--warn:#d97706;--danger:#e53e3e;
+  --r:8px;--sh:0 1px 3px rgba(0,0,0,.1);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+.wrap{max-width:1200px;margin:0 auto;padding:0 20px}
+
+/* HEADER */
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 0;position:sticky;top:0;z-index:100}
+.hdr-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.hdr h1{font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px}
+.hdr-meta{font-size:11px;color:var(--muted)}
+.exp-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+
+/* FILTERS */
+.filters{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 0}
+.frow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fg label{font-size:11px;font-weight:600;color:var(--text2);margin-right:4px}
+select,input[type=month]{font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);outline:none;cursor:pointer}
+select:focus,input[type=month]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(49,130,206,.15)}
+
+/* VIEW TOGGLE */
+.vtog{background:var(--surface);border-bottom:2px solid var(--border);padding:10px 0}
+.vtrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.vtlabel{font-size:12px;font-weight:600;color:var(--text2)}
+.tbts{display:flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.tbt{padding:7px 18px;font-size:12px;font-weight:500;background:var(--surface);border:none;cursor:pointer;color:var(--text2);transition:all .15s}
+.tbt:first-child{border-right:1px solid var(--border)}
+.tbt.on{background:var(--accent);color:#fff}
+.tbt:hover:not(.on){background:var(--accent-bg);color:var(--accent)}
+.vdef{font-size:12px;color:var(--muted);background:var(--accent-bg);border:1px solid #bee3f8;border-radius:var(--r);padding:5px 10px}
+.vdef strong{color:var(--accent)}
+
+/* MAIN */
+.main{padding:20px 0}
+
+/* KPIS */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;box-shadow:var(--sh)}
+.kpi.click{cursor:pointer}
+.kpi.click:hover{border-color:var(--accent)}
+.kpi-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px}
+.kpi-val{font-size:26px;font-weight:700;line-height:1;margin-bottom:4px}
+.kpi-chg{font-size:11px;font-weight:500}
+.pos{color:var(--ok)}.neg{color:var(--danger)}.neu{color:var(--muted)}
+
+/* DQ BANNER */
+.dq{background:#fffbeb;border:1px solid #f6ad55;border-radius:var(--r);padding:14px 18px;margin-bottom:20px}
+.dq-ttl{font-size:12px;font-weight:600;color:#92400e;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.dq-item{font-size:12px;color:#78350f;display:flex;align-items:center;gap:8px;padding:3px 0}
+.dq-lnk{color:var(--accent);text-decoration:underline;cursor:pointer}
+
+/* INSIGHTS */
+.ins-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh);margin-bottom:20px}
+.ins-ttl{font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.ins-cnt{background:var(--danger);color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:600}
+.ins-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ins-item{padding:10px;border-radius:var(--r);border-left:3px solid;font-size:12px}
+.ins-item.red{background:#fff5f5;border-color:var(--danger);color:#742a2a}
+.ins-item.amb{background:#fffbeb;border-color:var(--warn);color:#78350f}
+.ins-item.blu{background:var(--accent-bg);border-color:var(--accent);color:#1a365d}
+.ins-num{font-size:20px;font-weight:700;display:block;margin-bottom:2px}
+
+/* CHARTS */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh);overflow:hidden}
+.chart-card.fw{grid-column:1/-1}
+.chart-ttl{font-size:13px;font-weight:600;margin-bottom:2px}
+.chart-sub{font-size:11px;color:var(--muted);margin-bottom:12px}
+.chart-wrap{position:relative}
+canvas.ch{display:block;width:100%!important;border-radius:4px;background:#f8fafc}
+.chart-meta{display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--text2)}
+.chart-meta strong{color:var(--text)}
+
+/* TARGET SETTINGS */
+.settings{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh);margin-bottom:20px}
+.settings-ttl{font-size:13px;font-weight:600;margin-bottom:14px}
+.s-grid{display:grid;grid-template-columns:220px 1fr;gap:20px}
+.s-form{display:flex;flex-direction:column;gap:10px}
+.fg2{display:flex;flex-direction:column;gap:3px}
+.fg2 label{font-size:11px;font-weight:600;color:var(--text2)}
+.fg2 input{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;color:var(--text);outline:none}
+.fg2 input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(49,130,206,.15)}
+.ov-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.ov-row span{flex:1}
+.ov-row input{width:90px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;outline:none}
+
+/* BUTTONS */
+.btn{padding:7px 14px;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;border:1px solid transparent;transition:all .15s}
+.btn-p{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-p:hover{background:#2b6cb0}
+.btn-s{background:var(--surface);color:var(--text2);border-color:var(--border)}
+.btn-s:hover{background:#edf2f7}
+.btn-xs{padding:4px 10px;font-size:11px}
+
+/* PROPERTY TABLE */
+.tbl-sec{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:20px;overflow:hidden}
+.tbl-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.tbl-ttl{font-size:13px;font-weight:600}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:9px 10px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);background:#f8fafc;border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;user-select:none}
+th:hover{background:#edf2f7}
+th.sorted{color:var(--accent)}
+td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr.prop-row{cursor:pointer;transition:background .1s}
+tr.prop-row:hover{background:#f7faff}
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600}
+.badge.above{background:#f0fff4;color:var(--ok)}
+.badge.near{background:#fffbeb;color:var(--warn)}
+.badge.below{background:#fff5f5;color:var(--danger)}
+.rc{font-weight:600}
+.rc.above{color:var(--ok)}.rc.near{color:var(--warn)}.rc.below{color:var(--danger)}
+.pg{padding:10px 18px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)}
+
+/* STATES */
+.st-load,.st-empty,.st-err{padding:48px 20px;text-align:center;color:var(--muted)}
+.st-err{color:var(--danger)}
+.spin{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .6s linear infinite;margin:0 auto 10px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* MODAL */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.modal-ov.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--r);width:92%;max-width:1100px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-hdr{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-ttl{font-size:15px;font-weight:600}
+.modal-cls{background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);padding:4px 8px;border-radius:4px;line-height:1}
+.modal-cls:hover{background:var(--bg)}
+.modal-body{padding:18px 22px;overflow-y:auto;flex:1}
+
+/* SAVE MSG */
+.save-ok{font-size:11px;color:var(--ok);display:none}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .chart-grid{grid-template-columns:1fr}
+  .chart-card.fw{grid-column:1}
+  .ins-grid{grid-template-columns:1fr 1fr}
+  .s-grid{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .ins-grid{grid-template-columns:1fr}
+  .hdr h1{font-size:14px}
+}
+</style>
+</head>
+<body>
+
+<!-- STICKY HEADER -->
+<header class="hdr" role="banner">
+  <div class="wrap hdr-row">
+    <h1>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3182ce" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      Co-Living Occupancy Dashboard
+    </h1>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span class="hdr-meta" id="last-upd">—</span>
+      <div class="exp-row">
+        <span style="font-size:11px;font-weight:600;color:var(--text2)">Export:</span>
+        <button class="btn btn-s btn-xs" onclick="exportCSV('property')" aria-label="Download property CSV">Property CSV</button>
+        <button class="btn btn-s btn-xs" onclick="exportCSV('finance')" aria-label="Download finance CSV">Finance CSV</button>
+        <button class="btn btn-s btn-xs" onclick="exportCSV('ops')" aria-label="Download ops CSV">Ops CSV</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- FILTERS -->
+<nav class="filters" aria-label="Dashboard filters">
+  <div class="wrap frow">
+    <div class="fg"><label for="f-month">Month</label><input type="month" id="f-month" value="2026-05" aria-label="Select month"/></div>
+    <div class="fg"><label for="f-prop">Property</label><select id="f-prop" aria-label="Filter by property"><option value="">All Properties</option></select></div>
+    <div class="fg"><label for="f-type">Type</label>
+      <select id="f-type" aria-label="Property type">
+        <option value="">All Types</option>
+        <option value="co-living">Co-living</option>
+        <option value="serviced">Serviced</option>
+        <option value="student">Student</option>
+      </select>
+    </div>
+    <div class="fg"><label for="f-region">Region</label>
+      <select id="f-region" aria-label="Region">
+        <option value="">All Regions</option>
+        <option value="North">North</option>
+        <option value="South">South</option>
+        <option value="East">East</option>
+        <option value="West">West</option>
+        <option value="Central">Central</option>
+      </select>
+    </div>
+    <div class="fg"><label for="f-status">Status</label>
+      <select id="f-status" aria-label="Occupancy status">
+        <option value="">All Statuses</option>
+        <option value="Occupied">Occupied</option>
+        <option value="Vacant">Vacant</option>
+        <option value="Reserved">Reserved</option>
+        <option value="Maintenance">Under Maintenance</option>
+      </select>
+    </div>
+    <button class="btn btn-s btn-xs" style="margin-left:auto" onclick="resetFilters()">Reset</button>
+  </div>
+</nav>
+
+<!-- VIEW TOGGLE -->
+<section class="vtog" aria-label="View mode selector">
+  <div class="wrap vtrow">
+    <span class="vtlabel">View Mode:</span>
+    <div class="tbts" role="group" aria-label="Finance or Operations view">
+      <button class="tbt on" id="btn-fin" onclick="setView('finance')" aria-pressed="true">Finance View</button>
+      <button class="tbt" id="btn-ops" onclick="setView('ops')" aria-pressed="false">Operations View</button>
+    </div>
+    <div class="vdef" id="vdef" role="status" aria-live="polite">
+      <span id="vdef-txt"><strong>Finance View:</strong> Occupied at any point in the month</span>
+    </div>
+  </div>
+</section>
+
+<!-- MAIN -->
+<main class="main" role="main">
+<div class="wrap">
+
+  <!-- Loading -->
+  <div id="st-load" class="st-load" role="status" aria-live="polite">
+    <div class="spin" aria-hidden="true"></div>Loading dashboard…
+  </div>
+
+  <!-- Content -->
+  <div id="dash" style="display:none">
+
+    <!-- KPI CARDS -->
+    <section aria-label="Key metrics">
+      <div class="kpi-grid" id="kpi-grid" role="list"></div>
+    </section>
+
+    <!-- DATA QUALITY -->
+    <section id="dq-sec" style="display:none" aria-label="Data quality warnings">
+      <div class="dq">
+        <div class="dq-ttl">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Data Quality — <span id="dq-n">0</span> issues
+          <button class="btn btn-s btn-xs" style="margin-left:auto" onclick="toggleDQ()">Show/Hide</button>
+        </div>
+        <div id="dq-list" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- INSIGHTS -->
+    <section aria-label="Actionable insights">
+      <div class="ins-panel">
+        <div class="ins-ttl">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Actionable Insights
+          <span class="ins-cnt" id="ins-tot">0</span>
+        </div>
+        <div class="ins-grid" id="ins-grid"></div>
+      </div>
+    </section>
+
+    <!-- CHARTS -->
+    <section aria-label="Charts">
+      <div class="chart-grid">
+        <div class="chart-card" id="line-card" aria-label="Daily occupancy line chart">
+          <div class="chart-ttl">Daily Occupancy Rate</div>
+          <div class="chart-sub">Operations View — daily trend this month</div>
+          <div class="chart-wrap"><canvas id="c-line" class="ch" height="210" aria-label="Line chart of daily occupancy"></canvas></div>
+          <div class="chart-meta" id="line-meta"></div>
+        </div>
+        <div class="chart-card" aria-label="Occupancy by property bar chart">
+          <div class="chart-ttl">Occupancy by Property</div>
+          <div class="chart-sub">Finance % vs Ops % side-by-side</div>
+          <div class="chart-wrap"><canvas id="c-bar" class="ch" height="210" aria-label="Bar chart by property"></canvas></div>
+        </div>
+        <div class="chart-card fw" aria-label="Calendar heatmap">
+          <div class="chart-ttl">Occupancy Calendar Heatmap</div>
+          <div class="chart-sub">Daily occupancy % — colour intensity = occupancy level</div>
+          <div class="chart-wrap"><canvas id="c-heat" class="ch" height="170" aria-label="Calendar heatmap of daily occupancy"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TARGET SETTINGS -->
+    <section aria-label="Target occupancy settings">
+      <div class="settings">
+        <div class="settings-ttl">Target Occupancy Settings</div>
+        <div class="s-grid">
+          <div class="s-form">
+            <div class="fg2">
+              <label for="g-target">Global Target (%)</label>
+              <input type="number" id="g-target" min="0" max="100" value="90" aria-label="Global target occupancy %"/>
+            </div>
+            <div style="font-size:11px;color:var(--muted)">Near-target band: ±5% of target</div>
+            <button class="btn btn-p" onclick="saveTarget()">Save Target</button>
+            <span class="save-ok" id="save-ok">✓ Saved</span>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Per-Property Overrides</div>
+            <div id="tgt-ovr" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROPERTY TABLE -->
+    <section aria-label="Property table">
+      <div class="tbl-sec">
+        <div class="tbl-hdr">
+          <span class="tbl-ttl">Properties</span>
+          <span style="font-size:11px;color:var(--muted)">Click a row to drill into units</span>
+        </div>
+        <div class="tbl-wrap" role="region" aria-label="Property data table, scrollable">
+          <table aria-label="Property occupancy">
+            <thead id="prop-thead"></thead>
+            <tbody id="prop-tbody"></tbody>
+          </table>
+        </div>
+        <div class="pg" id="pg-info">—</div>
+      </div>
+    </section>
+
+  </div><!-- /dash -->
+
+  <!-- Error -->
+  <div id="st-err" class="st-err" role="alert" style="display:none">
+    <strong>Failed to load data.</strong>
+    <p style="margin-top:8px"><button class="btn btn-s" onclick="boot()">Retry</button></p>
+  </div>
+
+</div>
+</main>
+
+<!-- UNIT MODAL -->
+<div class="modal-ov" id="unit-modal" role="dialog" aria-modal="true" aria-labelledby="modal-ttl">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-ttl" id="modal-ttl">Unit Detail</div>
+        <div style="font-size:11px;color:var(--muted)" id="modal-sub"></div>
+      </div>
+      <button class="modal-cls" onclick="closeModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="tbl-wrap">
+        <table aria-label="Unit detail">
+          <thead id="unit-thead"></thead>
+          <tbody id="unit-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+// ── MOCK DATA (TODO: swap to real API when backend is ready)
+// Unblock: GET /api/occupancy/* — sibling child issue under THE-1904
+
+const SUMMARY = {
+  finance:{rate:94.2,available:248,occupied:218,vacant:22,mom:+2.3,ins:14,outs:8,below:2},
+  ops:    {rate:87.6,available:248,occupied:201,vacant:39,mom:+1.8,ins:14,outs:8,below:3}
+};
+
+const DAILY = Array.from({length:27},(_,i)=>({
+  date:`2026-05-${String(i+1).padStart(2,'0')}`,
+  rate: Math.round(83 + Math.sin(i*0.45)*4.5 + (i%3)*1.2)
+}));
+
+const PROPS = [
+  {id:'p1',name:'Sunset Gardens',     region:'North',   type:'Co-living', avail:48,occ:46,vac:1,res:1,mnt:0,fin:97.9,ops:93.1,ins:3,outs:1,upd:'2026-05-27',tgt:90},
+  {id:'p2',name:'The Hive @ Orchard', region:'Central', type:'Co-living', avail:64,occ:61,vac:2,res:1,mnt:0,fin:95.3,ops:89.4,ins:5,outs:3,upd:'2026-05-26',tgt:92},
+  {id:'p3',name:'Marina Bay Res.',    region:'Central', type:'Serviced',  avail:36,occ:28,vac:5,res:2,mnt:1,fin:83.3,ops:78.6,ins:2,outs:4,upd:'2026-05-27',tgt:90},
+  {id:'p4',name:'Eastwood Living',    region:'East',    type:'Co-living', avail:42,occ:40,vac:2,res:0,mnt:0,fin:95.2,ops:91.7,ins:2,outs:2,upd:'2026-05-25',tgt:88},
+  {id:'p5',name:'NorthStar Suites',   region:'North',   type:'Student',   avail:58,occ:43,vac:11,res:3,mnt:1,fin:79.3,ops:73.8,ins:2,outs:2,upd:'2026-05-24',tgt:90},
+];
+
+const UNITS = {
+  p1:[
+    {id:'SG-101',tenant:'Alice Tan',  ls:'2026-01-01',le:'2026-12-31',mi:'2026-01-01',mo:null,  status:'Occupied',  dv:0, na:'2027-01-01',notes:'',crm:'#sg-101'},
+    {id:'SG-102',tenant:'Bob Lim',    ls:'2026-02-01',le:'2026-07-31',mi:'2026-02-01',mo:null,  status:'Occupied',  dv:0, na:'2026-08-01',notes:'Renewal needed',crm:'#sg-102'},
+    {id:'SG-103',tenant:'—',          ls:null,        le:null,        mi:null,        mo:'2026-05-01',status:'Vacant',dv:26,na:'2026-05-27',notes:'Deep clean due',crm:'#sg-103'},
+    {id:'SG-201',tenant:'Carol Wu',   ls:'2026-03-15',le:'2026-09-14',mi:'2026-03-15',mo:null,  status:'Occupied',  dv:0, na:'2026-09-15',notes:'',crm:'#sg-201'},
+    {id:'SG-202',tenant:'David Ng',   ls:'2026-05-01',le:'2026-10-31',mi:'2026-05-01',mo:null,  status:'Reserved',  dv:0, na:'2026-11-01',notes:'Key handover pending',crm:'#sg-202'},
+  ],
+  p2:[
+    {id:'HV-A01',tenant:'Emma Zhang', ls:'2025-11-01',le:'2026-10-31',mi:'2025-11-01',mo:null,  status:'Occupied',  dv:0, na:'2026-11-01',notes:'',crm:'#hv-a01'},
+    {id:'HV-A02',tenant:'Frank Koh',  ls:'2026-01-15',le:'2026-07-14',mi:'2026-01-15',mo:null,  status:'Occupied',  dv:0, na:'2026-07-15',notes:'Renewal discuss',crm:'#hv-a02'},
+    {id:'HV-B01',tenant:'—',          ls:null,        le:null,        mi:null,        mo:'2026-05-10',status:'Vacant',dv:17,na:'2026-05-27',notes:'Listed on platform',crm:'#hv-b01'},
+  ],
+  p3:[
+    {id:'MB-101',tenant:'Grace Lim',  ls:'2026-02-01',le:'2026-08-31',mi:'2026-02-01',mo:null,  status:'Occupied',  dv:0, na:'2026-09-01',notes:'',crm:'#mb-101'},
+    {id:'MB-301',tenant:'Henry Lee',  ls:'2026-03-01',le:null,        mi:'2026-03-01',mo:null,  status:'Occupied',  dv:0, na:'—',          notes:'Missing lease end',crm:'#mb-301'},
+  ],
+};
+
+const DQ = [
+  {prop:'p3',pname:'Marina Bay Res.',unit:'MB-301',issue:'Missing lease end date',   sev:'warn'},
+  {prop:'p3',pname:'Marina Bay Res.',unit:'MB-115',issue:'Move-out without lease end',sev:'warn'},
+  {prop:'p5',pname:'NorthStar Suites',unit:'NS-204',issue:'Tenant name missing in CRM',sev:'err'},
+  {prop:'p5',pname:'NorthStar Suites',unit:'NS-B12',issue:'Vacant >30 days, no listing',sev:'err'},
+];
+
+// ── STATE
+const S = {
+  view:'finance', month:'2026-05', prop:'', type:'', region:'', status:'',
+  target:{global:90,pp:{}}, sk:'name', sd:'asc',
+  renderers:{}
+};
+
+// ── BOOT
+async function boot(){
+  show('load');
+  try{
+    await delay(500);
+    loadLS();
+    renderAll();
+    show('dash');
+    document.getElementById('last-upd').textContent =
+      'Updated '+new Date().toLocaleString('en-SG',{timeZone:'Asia/Singapore',dateStyle:'short',timeStyle:'short'});
+  }catch(e){
+    console.error(e);
+    show('err');
+  }
+}
+
+function show(s){
+  document.getElementById('st-load').style.display = s==='load'?'':'none';
+  document.getElementById('dash').style.display     = s==='dash'?'':'none';
+  document.getElementById('st-err').style.display  = s==='err'?'':'none';
+}
+
+function loadLS(){
+  try{
+    const t=localStorage.getItem('occ-target'); if(t) S.target=JSON.parse(t);
+    const v=localStorage.getItem('occ-view');   if(v) S.view=v;
+    document.getElementById('g-target').value=S.target.global;
+  }catch{}
+}
+
+function delay(ms){return new Promise(r=>setTimeout(r,ms))}
+
+function renderAll(){
+  renderKPIs();
+  renderInsights();
+  renderDQ();
+  renderTargetSettings();
+  renderPropTable();
+  renderCharts();
+  populatePropFilter();
+}
+
+// ── FILTERS
+function filteredProps(){
+  return PROPS.filter(p=>{
+    if(S.prop   && p.id!==S.prop)           return false;
+    if(S.type   && p.type.toLowerCase()!==S.type) return false;
+    if(S.region && p.region!==S.region)     return false;
+    return true;
+  });
+}
+
+function onFilter(){
+  S.month  = document.getElementById('f-month').value;
+  S.prop   = document.getElementById('f-prop').value;
+  S.type   = document.getElementById('f-type').value;
+  S.region = document.getElementById('f-region').value;
+  S.status = document.getElementById('f-status').value;
+  renderAll();
+}
+
+function resetFilters(){
+  document.getElementById('f-month').value  ='2026-05';
+  document.getElementById('f-prop').value   ='';
+  document.getElementById('f-type').value   ='';
+  document.getElementById('f-region').value ='';
+  document.getElementById('f-status').value ='';
+  onFilter();
+}
+
+function populatePropFilter(){
+  const sel=document.getElementById('f-prop'),cur=sel.value;
+  sel.innerHTML='<option value="">All Properties</option>';
+  PROPS.forEach(p=>{
+    const o=document.createElement('option');
+    o.value=p.id; o.textContent=p.name;
+    if(p.id===cur) o.selected=true;
+    sel.appendChild(o);
+  });
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  ['f-month','f-prop','f-type','f-region','f-status'].forEach(id=>
+    document.getElementById(id).addEventListener('change',onFilter));
+});
+
+// ── VIEW TOGGLE
+function setView(v){
+  S.view=v;
+  try{localStorage.setItem('occ-view',v)}catch{}
+  document.getElementById('btn-fin').classList.toggle('on',v==='finance');
+  document.getElementById('btn-ops').classList.toggle('on',v==='ops');
+  document.getElementById('btn-fin').setAttribute('aria-pressed',String(v==='finance'));
+  document.getElementById('btn-ops').setAttribute('aria-pressed',String(v==='ops'));
+  document.getElementById('vdef-txt').innerHTML=
+    v==='finance'
+      ?'<strong>Finance View:</strong> Occupied at any point in the month'
+      :'<strong>Operations View:</strong> Average daily occupancy across the month';
+  document.getElementById('line-card').style.display=v==='ops'?'':'none';
+  renderKPIs(); renderPropTable(); renderCharts();
+}
+
+// ── KPI CARDS
+function renderKPIs(){
+  const d=SUMMARY[S.view];
+  const tgt=S.target.global;
+  const rateSt=d.rate>=tgt?'pos':d.rate>=tgt-5?'neu':'neg';
+  const cards=[
+    {lbl:S.view==='finance'?'Finance Occupancy':'Avg Daily Occupancy',
+     val:d.rate.toFixed(1)+'%',
+     chg:(d.mom>=0?'+':'')+d.mom.toFixed(1)+'% MoM',cc:d.mom>=0?'pos':'neg',
+     border:`border-top:3px solid ${rateSt==='pos'?'var(--ok)':rateSt==='neg'?'var(--danger)':'var(--warn)'}`},
+    {lbl:'Available Units',   val:d.available,  chg:'total capacity',cc:'neu'},
+    {lbl:'Occupied',          val:d.occupied,   chg:((d.occupied/d.available)*100).toFixed(1)+'% of capacity',cc:'neu'},
+    {lbl:'Vacant',            val:d.vacant,     chg:((d.vacant/d.available)*100).toFixed(1)+'% vacancy',cc:d.vacant>10?'neg':'neu'},
+    {lbl:'MoM Change',        val:(d.mom>=0?'+':'')+d.mom.toFixed(1)+'%',chg:'vs last month',cc:d.mom>=0?'pos':'neg'},
+    {lbl:'Move-Ins',          val:d.ins,        chg:'this month',cc:'neu'},
+    {lbl:'Move-Outs',         val:d.outs,       chg:'this month',cc:'neu'},
+    {lbl:'Below Target',      val:d.below,      chg:'properties — click to filter',cc:d.below?'neg':'pos',click:true},
+  ];
+  document.getElementById('kpi-grid').innerHTML=cards.map(c=>`
+    <div class="kpi${c.click?' click':''}" role="listitem"
+         ${c.click?'onclick="scrollToTable()" tabindex="0" onkeydown="if(event.key===\'Enter\')scrollToTable()"':''}
+         ${c.click?'aria-label="'+c.lbl+': '+c.val+', click to filter"':''}>
+      <div class="kpi-lbl">${c.lbl}</div>
+      <div class="kpi-val" ${c.border?'style="'+c.border+'"':''}>${c.val}</div>
+      <div class="kpi-chg ${c.cc}">${c.chg}</div>
+    </div>`).join('');
+}
+
+function scrollToTable(){
+  document.querySelector('.tbl-sec').scrollIntoView({behavior:'smooth'});
+}
+
+// ── INSIGHTS
+function renderInsights(){
+  const props=filteredProps(),tgt=S.target.global;
+  const below=props.filter(p=>{
+    const r=S.view==='finance'?p.fin:p.ops;
+    return r<(S.target.pp[p.id]??tgt)-5;
+  });
+  const allUnits=Object.values(UNITS).flat();
+  const v30=allUnits.filter(u=>u.status==='Vacant'&&u.dv>30).length;
+  const v14=allUnits.filter(u=>u.status==='Vacant'&&u.dv>14).length;
+  const upcoming=allUnits.filter(u=>{
+    if(!u.le) return false;
+    const d=(new Date(u.le)-new Date('2026-05-27'))/(864e5);
+    return d>=0&&d<=30;
+  }).length;
+  const low85=props.filter(p=>(S.view==='finance'?p.fin:p.ops)<85).length;
+  const tot=below.length+v30+v14+upcoming+DQ.length+low85;
+  document.getElementById('ins-tot').textContent=tot;
+  const items=[
+    {n:below.length, lbl:`propert${below.length!==1?'ies':'y'} below target`,det:below.map(p=>p.name).join(', ')||'None',cls:below.length?'red':'blu'},
+    {n:v30,          lbl:`unit${v30!==1?'s':''} vacant >30 days`,         det:'Immediate action needed',cls:v30?'red':'blu'},
+    {n:v14,          lbl:`unit${v14!==1?'s':''} vacant >14 days`,         det:'Follow up with leasing',cls:v14?'amb':'blu'},
+    {n:upcoming,     lbl:`move-out${upcoming!==1?'s':''} in 30 days`,     det:'Plan re-leasing now',cls:upcoming>3?'amb':'blu'},
+    {n:DQ.length,    lbl:`data quality issue${DQ.length!==1?'s':''}`,     det:'Missing/inconsistent CRM data',cls:DQ.length?'amb':'blu'},
+    {n:low85,        lbl:`propert${low85!==1?'ies':'y'} <85% occupancy`,  det:'Review pricing & marketing',cls:low85?'red':'blu'},
+  ];
+  document.getElementById('ins-grid').innerHTML=items.map(i=>`
+    <div class="ins-item ${i.cls}" role="listitem">
+      <span class="ins-num">${i.n}</span>
+      <strong>${i.lbl}</strong>
+      <div style="font-size:10px;margin-top:3px;opacity:.8">${i.det}</div>
+    </div>`).join('');
+}
+
+// ── DATA QUALITY
+function renderDQ(){
+  if(!DQ.length) return;
+  document.getElementById('dq-sec').style.display='';
+  document.getElementById('dq-n').textContent=DQ.length;
+  document.getElementById('dq-list').innerHTML=DQ.map(d=>`
+    <div class="dq-item">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"
+           style="flex-shrink:0;color:${d.sev==='err'?'var(--danger)':'var(--warn)'}">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <strong>${d.pname}</strong> — Unit ${d.unit}: ${d.issue}
+      <span class="dq-lnk" onclick="openUnit('${d.prop}')" role="button" tabindex="0"
+            onkeydown="if(event.key==='Enter')openUnit('${d.prop}')"
+            aria-label="View ${d.unit}">View →</span>
+    </div>`).join('');
+}
+
+function toggleDQ(){
+  const el=document.getElementById('dq-list');
+  el.style.display=el.style.display==='none'?'':'none';
+}
+
+// ── TARGET SETTINGS
+function renderTargetSettings(){
+  document.getElementById('g-target').value=S.target.global;
+  const props=filteredProps();
+  document.getElementById('tgt-ovr').innerHTML=props.map(p=>{
+    const cur=S.target.pp[p.id]??'';
+    return`<div class="ov-row">
+      <span>${p.name}</span>
+      <input type="number" min="0" max="100" value="${cur}" placeholder="${S.target.global}% (global)"
+             aria-label="Target for ${p.name}"
+             onchange="setPropTarget('${p.id}',this.value)"/>
+    </div>`;
+  }).join('');
+}
+
+function saveTarget(){
+  const v=parseInt(document.getElementById('g-target').value);
+  if(isNaN(v)||v<0||v>100) return;
+  S.target.global=v;
+  try{localStorage.setItem('occ-target',JSON.stringify(S.target))}catch{}
+  const el=document.getElementById('save-ok');
+  el.style.display=''; setTimeout(()=>el.style.display='none',2000);
+  renderAll();
+}
+
+function setPropTarget(id,val){
+  const v=parseInt(val);
+  if(!isNaN(v)&&v>=0&&v<=100) S.target.pp[id]=v;
+  else delete S.target.pp[id];
+  try{localStorage.setItem('occ-target',JSON.stringify(S.target))}catch{}
+  renderPropTable();
+}
+
+// ── PROPERTY TABLE
+function propStatus(p){
+  const r=S.view==='finance'?p.fin:p.ops;
+  const tgt=S.target.pp[p.id]??S.target.global;
+  return r>=tgt?'above':r>=tgt-5?'near':'below';
+}
+
+const stLbl={above:'↑ Above',near:'~ Near',below:'↓ Below'};
+
+function sortedProps(){
+  return [...filteredProps()].sort((a,b)=>{
+    let va=a[S.sk]??'',vb=b[S.sk]??'';
+    if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase()}
+    return(S.sd==='asc'?1:-1)*(va>vb?1:va<vb?-1:0);
+  });
+}
+
+const COLS=[
+  {k:'name', l:'Property'},
+  {k:'avail',l:'Avail'},
+  {k:'occ',  l:'Occupied'},
+  {k:'vac',  l:'Vacant'},
+  {k:'res',  l:'Reserved'},
+  {k:'mnt',  l:'Maint.'},
+  {k:'fin',  l:'Finance %'},
+  {k:'ops',  l:'Ops %'},
+  {k:'ins',  l:'Move-Ins'},
+  {k:'outs', l:'Move-Outs'},
+  {k:'upd',  l:'Updated'},
+  {k:'_st',  l:'Status'},
+];
+
+function renderPropTable(){
+  const props=sortedProps();
+  document.getElementById('prop-thead').innerHTML=`<tr>${COLS.map(c=>`
+    <th class="${c.k===S.sk?'sorted':''}" onclick="sortBy('${c.k}')" scope="col"
+        aria-sort="${c.k===S.sk?(S.sd==='asc'?'ascending':'descending'):'none'}">
+      ${c.l} <span aria-hidden="true">${c.k===S.sk?(S.sd==='asc'?'↑':'↓'):'↕'}</span>
+    </th>`).join('')}</tr>`;
+  if(!props.length){
+    document.getElementById('prop-tbody').innerHTML=`
+      <tr><td colspan="${COLS.length}" style="text-align:center;padding:32px;color:var(--muted)">No properties match current filters.</td></tr>`;
+    document.getElementById('pg-info').textContent='0 properties';
+    return;
+  }
+  document.getElementById('prop-tbody').innerHTML=props.map(p=>{
+    const st=propStatus(p);
+    const tgt=S.target.pp[p.id]??S.target.global;
+    return`<tr class="prop-row" onclick="openUnit('${p.id}')"
+              tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')openUnit('${p.id}')"
+              aria-label="View units for ${p.name}">
+      <td><strong>${p.name}</strong><br><small style="color:var(--muted)">${p.region} · ${p.type}</small></td>
+      <td>${p.avail}</td>
+      <td>${p.occ}</td>
+      <td>${p.vac}</td>
+      <td>${p.res}</td>
+      <td>${p.mnt}</td>
+      <td class="rc ${st}">${p.fin}%</td>
+      <td class="rc ${st}">${p.ops}%</td>
+      <td>${p.ins}</td>
+      <td>${p.outs}</td>
+      <td style="color:var(--muted);font-size:11px">${p.upd}</td>
+      <td><span class="badge ${st}" aria-label="Status: ${stLbl[st]} (target ${tgt}%)">${stLbl[st]}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('pg-info').textContent=`${props.length} propert${props.length!==1?'ies':'y'}`;
+}
+
+function sortBy(k){
+  if(S.sk===k) S.sd=S.sd==='asc'?'desc':'asc';
+  else{S.sk=k;S.sd='asc';}
+  renderPropTable();
+}
+
+// ── UNIT MODAL
+function openUnit(propId){
+  const p=PROPS.find(x=>x.id===propId);
+  const units=UNITS[propId]||[];
+  document.getElementById('modal-ttl').textContent=`Unit Detail — ${p.name}`;
+  document.getElementById('modal-sub').textContent=`${p.region} · ${p.type} · ${p.avail} units`;
+  const uh=['Unit ID','Tenant','Lease Start','Lease End','Move-In','Move-Out','Status','Days Vacant','Next Avail','Notes','CRM'];
+  document.getElementById('unit-thead').innerHTML=`<tr>${uh.map(h=>`<th scope="col">${h}</th>`).join('')}</tr>`;
+  if(!units.length){
+    document.getElementById('unit-tbody').innerHTML=`
+      <tr><td colspan="${uh.length}" style="text-align:center;padding:28px;color:var(--muted)">No unit data for this property.</td></tr>`;
+  } else {
+    document.getElementById('unit-tbody').innerHTML=units.map(u=>{
+      const sc={Occupied:'var(--ok)',Vacant:u.dv>30?'var(--danger)':u.dv>14?'var(--warn)':'var(--muted)',
+                Reserved:'var(--accent)','Under Maintenance':'var(--warn)'}[u.status]||'var(--muted)';
+      const leBad=!u.le?'<span style="color:var(--danger)">Missing</span>':'<span>'+u.le+'</span>';
+      return`<tr>
+        <td><strong>${u.id}</strong></td>
+        <td>${u.tenant}</td>
+        <td>${u.ls||'—'}</td>
+        <td>${leBad.replace('<span>','').replace('</span>','') || '—'}</td>
+        <td>${u.mi||'—'}</td>
+        <td>${u.mo||'—'}</td>
+        <td style="color:${sc};font-weight:500">${u.status}</td>
+        <td>${u.dv||'—'}</td>
+        <td>${u.na||'—'}</td>
+        <td style="font-size:11px;color:var(--muted)">${u.notes||'—'}</td>
+        <td><a href="${u.crm}" style="color:var(--accent);font-size:11px" aria-label="CRM ${u.id}">View →</a></td>
+      </tr>`;
+    }).join('');
+  }
+  document.getElementById('unit-modal').classList.add('open');
+}
+
+function closeModal(){document.getElementById('unit-modal').classList.remove('open')}
+document.getElementById('unit-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+// ── CSV EXPORT
+function exportCSV(type){
+  const props=filteredProps();
+  let hdr,rows;
+  if(type==='property'){
+    hdr=['Property','Region','Type','Available','Occupied','Vacant','Reserved','Maint','Finance%','Ops%','Move-Ins','Move-Outs','Updated'];
+    rows=props.map(p=>[p.name,p.region,p.type,p.avail,p.occ,p.vac,p.res,p.mnt,p.fin,p.ops,p.ins,p.outs,p.upd]);
+  }else if(type==='finance'){
+    hdr=['Property','Finance Occ%','Target%','Status','Move-Ins','Move-Outs'];
+    rows=props.map(p=>[p.name,p.fin,S.target.pp[p.id]??S.target.global,stLbl[propStatus(p)],p.ins,p.outs]);
+  }else{
+    hdr=['Property','Ops Occ%','Target%','Status'];
+    rows=props.map(p=>[p.name,p.ops,S.target.pp[p.id]??S.target.global,stLbl[propStatus(p)]]);
+  }
+  const csv=[hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`occupancy-${type}-${S.month}.csv`;
+  a.click();
+}
+
+// ── THREE.JS CHARTS
+// Note: three.js is used per spec (THE-1908). For 2D financial charts, Chart.js
+// would be lighter and more accessible — flag to CTO if this needs revisiting.
+
+const rends={};
+function disposeRend(k){if(rends[k]){rends[k].dispose();delete rends[k];}}
+
+function renderCharts(){
+  if(S.view==='ops'){
+    document.getElementById('line-card').style.display='';
+    renderLine();
+  } else {
+    document.getElementById('line-card').style.display='none';
+  }
+  renderBar();
+  renderHeat();
+}
+
+// helper: get canvas physical size
+function getSize(id){
+  const c=document.getElementById(id);
+  const W=c.parentElement.offsetWidth||600;
+  const H=parseInt(c.getAttribute('height'))||200;
+  return{c,W,H};
+}
+
+// helper: attach 2D overlay canvas for text
+function overlay2d(wrapper,W,H,draw){
+  const oc=document.createElement('canvas');
+  oc.width=W; oc.height=H;
+  oc.style.cssText='position:absolute;top:0;left:0;pointer-events:none';
+  oc.className='ov2d';
+  const ctx=oc.getContext('2d');
+  draw(ctx,W,H);
+  const ex=wrapper.querySelector('.ov2d');
+  if(ex) ex.remove();
+  wrapper.style.position='relative';
+  wrapper.appendChild(oc);
+}
+
+// ── LINE CHART
+function renderLine(){
+  disposeRend('line');
+  const{c,W,H}=getSize('c-line');
+  c.width=W; c.height=H;
+  const vals=DAILY.map(d=>d.rate);
+  const lo=Math.min(...vals)-4, hi=Math.max(...vals)+4;
+  const n=DAILY.length;
+  const renderer=new THREE.WebGLRenderer({canvas:c,antialias:true,alpha:true});
+  renderer.setSize(W,H);
+  renderer.setClearColor(0xf8fafc,1);
+  rends.line=renderer;
+  const scene=new THREE.Scene();
+  const cam=new THREE.OrthographicCamera(0,n-1,hi,lo,-1,1);
+  // grid
+  const gm=new THREE.LineBasicMaterial({color:0xe2e8f0});
+  for(let i=0;i<=4;i++){
+    const y=lo+((hi-lo)/4)*i;
+    const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,y,0),new THREE.Vector3(n-1,y,0)]);
+    scene.add(new THREE.Line(g,gm));
+  }
+  // fill — simple vertical lines from baseline
+  const fm=new THREE.LineBasicMaterial({color:0xbee3f8,transparent:true,opacity:.5});
+  DAILY.forEach((d,i)=>{
+    const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i,lo,0),new THREE.Vector3(i,d.rate,0)]);
+    scene.add(new THREE.Line(g,fm));
+  });
+  // line
+  const lm=new THREE.LineBasicMaterial({color:0x3182ce,linewidth:2});
+  const lg=new THREE.BufferGeometry().setFromPoints(DAILY.map((d,i)=>new THREE.Vector3(i,d.rate,0)));
+  scene.add(new THREE.Line(lg,lm));
+  // target dashed
+  const tm=new THREE.LineDashedMaterial({color:0xe53e3e,dashSize:.5,gapSize:.3});
+  const tg=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,S.target.global,0),new THREE.Vector3(n-1,S.target.global,0)]);
+  const tl=new THREE.Line(tg,tm); tl.computeLineDistances(); scene.add(tl);
+  renderer.render(scene,cam);
+
+  // 2D text overlay
+  overlay2d(c.parentElement,W,H,(ctx)=>{
+    const sx=i=>((i/(n-1))*W);
+    const sy=v=>(H-((v-lo)/(hi-lo))*H);
+    ctx.font='10px system-ui'; ctx.fillStyle='#718096'; ctx.textAlign='center';
+    [0,6,12,18,24].filter(i=>i<n).forEach(i=>ctx.fillText(DAILY[i].date.slice(5),sx(i),H-3));
+    ctx.textAlign='left';
+    for(let i=0;i<=4;i++){const v=lo+((hi-lo)/4)*i;ctx.fillText(Math.round(v)+'%',3,sy(v)-2);}
+    const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+    const maxV=Math.max(...vals),minV=Math.min(...vals);
+    const maxI=vals.indexOf(maxV),minI=vals.indexOf(minV);
+    ctx.font='bold 10px system-ui';
+    ctx.fillStyle='#3182ce'; ctx.textAlign='center';
+    ctx.fillText('▲'+maxV+'%',sx(maxI),sy(maxV)-5);
+    ctx.fillStyle='#e53e3e';
+    ctx.fillText('▼'+minV+'%',sx(minI),sy(minV)+13);
+    ctx.fillStyle='#e53e3e'; ctx.font='10px system-ui'; ctx.textAlign='left';
+    ctx.fillText('Target '+S.target.global+'%',4,sy(S.target.global)-3);
+    document.getElementById('line-meta').innerHTML=
+      `<span>Avg: <strong>${avg.toFixed(1)}%</strong></span>`+
+      `<span>High: <strong>${maxV}%</strong></span>`+
+      `<span>Low: <strong>${minV}%</strong></span>`+
+      `<span style="color:var(--danger)">Target: <strong>${S.target.global}%</strong></span>`;
+  });
+}
+
+// ── BAR CHART
+function renderBar(){
+  disposeRend('bar');
+  const{c,W,H}=getSize('c-bar');
+  c.width=W; c.height=H;
+  const props=filteredProps();
+  if(!props.length) return;
+  const n=props.length;
+  const GW=1.0,BW=0.32,GAP=0.05;
+  const totalW=n*GW;
+  const renderer=new THREE.WebGLRenderer({canvas:c,antialias:true,alpha:true});
+  renderer.setSize(W,H);
+  renderer.setClearColor(0xf8fafc,1);
+  rends.bar=renderer;
+  const scene=new THREE.Scene();
+  const cam=new THREE.OrthographicCamera(-.4,totalW+.1,108,-4,-1,1);
+  // grid
+  const gm=new THREE.LineBasicMaterial({color:0xe2e8f0});
+  [0,25,50,75,100].forEach(y=>{
+    const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-.4,y,0),new THREE.Vector3(totalW+.1,y,0)]);
+    scene.add(new THREE.Line(g,gm));
+  });
+  // bars
+  props.forEach((p,i)=>{
+    const x=i*GW;
+    const fh=p.fin; const fMesh=new THREE.Mesh(new THREE.PlaneGeometry(BW,fh),new THREE.MeshBasicMaterial({color:0x3182ce}));
+    fMesh.position.set(x+GAP+BW/2,fh/2,0); scene.add(fMesh);
+    const oh=p.ops; const oMesh=new THREE.Mesh(new THREE.PlaneGeometry(BW,oh),new THREE.MeshBasicMaterial({color:0x38a169}));
+    oMesh.position.set(x+GAP*2+BW+BW/2,oh/2,0); scene.add(oMesh);
+  });
+  renderer.render(scene,cam);
+  overlay2d(c.parentElement,W,H,(ctx,W,H)=>{
+    const sx=wx=>((wx+.4)/(totalW+.5))*W;
+    const sy=wy=>(H-((wy+4)/112)*H);
+    ctx.font='9px system-ui'; ctx.fillStyle='#718096'; ctx.textAlign='center';
+    props.forEach((p,i)=>{
+      const nm=p.name.length>10?p.name.slice(0,10)+'…':p.name;
+      ctx.fillText(nm,sx(i*GW+GW/2),H-3);
+    });
+    ctx.textAlign='left';
+    [0,25,50,75,100].forEach(y=>ctx.fillText(y+'%',2,sy(y)-1));
+    // legend
+    ctx.fillStyle='#3182ce'; ctx.fillRect(W-115,8,10,10);
+    ctx.fillStyle='#4a5568'; ctx.font='10px system-ui'; ctx.textAlign='left'; ctx.fillText('Finance',W-102,18);
+    ctx.fillStyle='#38a169'; ctx.fillRect(W-55,8,10,10);
+    ctx.fillStyle='#4a5568'; ctx.fillText('Ops',W-42,18);
+  });
+}
+
+// ── HEATMAP
+function renderHeat(){
+  disposeRend('heat');
+  const{c,W,H}=getSize('c-heat');
+  c.width=W; c.height=H;
+  const days=DAILY.length,COLS=7,ROWS=Math.ceil(days/COLS);
+  const CW=1.0,CH=1.0,G=.08;
+  const tW=COLS*(CW+G),tH=ROWS*(CH+G);
+  const renderer=new THREE.WebGLRenderer({canvas:c,antialias:true,alpha:true});
+  renderer.setSize(W,H);
+  renderer.setClearColor(0xf8fafc,1);
+  rends.heat=renderer;
+  const scene=new THREE.Scene();
+  const cam=new THREE.OrthographicCamera(-.1,tW,tH+.1,-.4,-1,1);
+  function rateCol(r){
+    if(r>=95) return new THREE.Color(0x276749);
+    if(r>=90) return new THREE.Color(0x38a169);
+    if(r>=85) return new THREE.Color(0x68d391);
+    if(r>=80) return new THREE.Color(0xf6e05e);
+    if(r>=70) return new THREE.Color(0xf6ad55);
+    return new THREE.Color(0xfc8181);
+  }
+  DAILY.forEach((d,i)=>{
+    const col=i%COLS,row=Math.floor(i/COLS);
+    const x=col*(CW+G),y=(ROWS-1-row)*(CH+G);
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(CW,CH),new THREE.MeshBasicMaterial({color:rateCol(d.rate)}));
+    mesh.position.set(x+CW/2,y+CH/2,0); scene.add(mesh);
+  });
+  renderer.render(scene,cam);
+  overlay2d(c.parentElement,W,H,(ctx,W,H)=>{
+    const px=col=>((col*(CW+G)+CW/2)/(tW+.1))*W;
+    const py=row=>(H-((ROWS-1-row)*(CH+G)+CH/2+.4)/(tH+.5)*H);
+    ctx.textAlign='center';
+    DAILY.forEach((d,i)=>{
+      const col=i%COLS,row=Math.floor(i/COLS);
+      const bx=px(col),by=py(row);
+      ctx.fillStyle=d.rate>=80?'#1a202c':'#fff';
+      ctx.font='bold 9px system-ui'; ctx.fillText(i+1,bx,by);
+      ctx.font='8px system-ui'; ctx.fillText(d.rate+'%',bx,by+10);
+    });
+    // legend
+    const lgs=[{c:'#fc8181',l:'<70%'},{c:'#f6ad55',l:'70-80%'},{c:'#f6e05e',l:'80-85%'},
+                {c:'#68d391',l:'85-90%'},{c:'#38a169',l:'90-95%'},{c:'#276749',l:'95%+'}];
+    const lw=60,lstart=W-lgs.length*lw;
+    lgs.forEach((lg,i)=>{
+      const lx=lstart+i*lw;
+      ctx.fillStyle=lg.c; ctx.fillRect(lx,H-18,10,10);
+      ctx.fillStyle='#4a5568'; ctx.font='9px system-ui'; ctx.textAlign='left';
+      ctx.fillText(lg.l,lx+12,H-10);
+    });
+  });
+}
+
+// ── RESIZE
+let resizeTimer;
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer=setTimeout(()=>{if(document.getElementById('dash').style.display!=='none')renderCharts();},300);
+});
+
+// ── START
+document.addEventListener('DOMContentLoaded',boot);
+</script>
+</body>
+</html>
