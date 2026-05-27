@@ -1,0 +1,10 @@
+[
+  {"id": "tenant-001", "name": "Alice Tan", "email": "alice@example.com", "phone": "+6591234001", "crm_link": null},
+  {"id": "tenant-002", "name": "Bob Lim", "email": "bob@example.com", "phone": "+6591234002", "crm_link": null},
+  {"id": "tenant-003", "name": "Clara Ng", "email": "clara@example.com", "phone": "+6591234003", "crm_link": null},
+  {"id": "tenant-004", "name": "David Chen", "email": "david@example.com", "phone": "+6591234004", "crm_link": null},
+  {"id": "tenant-005", "name": "Eva Koh", "email": "eva@example.com", "phone": "+6591234005", "crm_link": null},
+  {"id": "tenant-006", "name": "Frank Wu", "email": "frank@example.com", "phone": "+6591234006", "crm_link": null},
+  {"id": "tenant-007", "name": "Grace Lee", "email": "grace@example.com", "phone": "+6591234007", "crm_link": null},
+  {"id": "tenant-008", "name": "Henry Ong", "email": "henry@example.com", "phone": "+6591234008", "crm_link": null}
+]

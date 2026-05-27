@@ -1,0 +1,26 @@
+[
+  {
+    "id": "prop-001",
+    "name": "TAP @ Paya Lebar",
+    "property_type": "co-living",
+    "region": "Central",
+    "total_units": 20,
+    "crm_link": "https://crm.theassemblyplace.com/com/properties/prop-001/"
+  },
+  {
+    "id": "prop-002",
+    "name": "TAP @ Jurong East",
+    "property_type": "co-living",
+    "region": "West",
+    "total_units": 15,
+    "crm_link": "https://crm.theassemblyplace.com/com/properties/prop-002/"
+  },
+  {
+    "id": "prop-003",
+    "name": "TAP @ Novena",
+    "property_type": "serviced-apartment",
+    "region": "Central",
+    "total_units": 10,
+    "crm_link": "https://crm.theassemblyplace.com/com/properties/prop-003/"
+  }
+]
