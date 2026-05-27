@@ -1,0 +1,16 @@
+[
+  {"id": "unit-001", "property_id": "prop-001", "unit_name": "Room 1A", "unit_type": "room", "status": "occupied", "tenant_id": "tenant-001", "crm_link": "https://crm.theassemblyplace.com/com/units/unit-001/"},
+  {"id": "unit-002", "property_id": "prop-001", "unit_name": "Room 1B", "unit_type": "room", "status": "occupied", "tenant_id": "tenant-002", "crm_link": "https://crm.theassemblyplace.com/com/units/unit-002/"},
+  {"id": "unit-003", "property_id": "prop-001", "unit_name": "Room 2A", "unit_type": "room", "status": "vacant",   "tenant_id": null, "crm_link": "https://crm.theassemblyplace.com/com/units/unit-003/"},
+  {"id": "unit-004", "property_id": "prop-001", "unit_name": "Room 2B", "unit_type": "room", "status": "occupied", "tenant_id": "tenant-003", "crm_link": "https://crm.theassemblyplace.com/com/units/unit-004/"},
+  {"id": "unit-005", "property_id": "prop-001", "unit_name": "Studio 1", "unit_type": "studio", "status": "reserved", "tenant_id": null, "crm_link": null},
+  {"id": "unit-006", "property_id": "prop-002", "unit_name": "Bed A1", "unit_type": "bed", "status": "occupied", "tenant_id": "tenant-004", "crm_link": null},
+  {"id": "unit-007", "property_id": "prop-002", "unit_name": "Bed A2", "unit_type": "bed", "status": "occupied", "tenant_id": "tenant-005", "crm_link": null},
+  {"id": "unit-008", "property_id": "prop-002", "unit_name": "Bed B1", "unit_type": "bed", "status": "vacant",   "tenant_id": null, "crm_link": null},
+  {"id": "unit-009", "property_id": "prop-002", "unit_name": "Bed B2", "unit_type": "bed", "status": "vacant",   "tenant_id": null, "crm_link": null},
+  {"id": "unit-010", "property_id": "prop-003", "unit_name": "Apt 01", "unit_type": "studio", "status": "occupied", "tenant_id": "tenant-006", "crm_link": null},
+  {"id": "unit-011", "property_id": "prop-003", "unit_name": "Apt 02", "unit_type": "studio", "status": "occupied", "tenant_id": "tenant-007", "crm_link": null},
+  {"id": "unit-012", "property_id": "prop-003", "unit_name": "Apt 03", "unit_type": "studio", "status": "maintenance", "tenant_id": null, "crm_link": null},
+  {"id": "unit-013", "property_id": "prop-001", "unit_name": "Room 3A", "unit_type": "room", "status": "occupied", "tenant_id": null, "crm_link": null},
+  {"id": "unit-014", "property_id": "prop-002", "unit_name": "Bed C1", "unit_type": "bed", "status": "occupied", "tenant_id": "tenant-008", "crm_link": null}
+]

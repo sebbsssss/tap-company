@@ -1,0 +1,68 @@
+[
+  {
+    "id": "lease-001", "unit_id": "unit-001", "tenant_id": "tenant-001",
+    "contract_start": "2026-01-01", "contract_end": "2026-12-31",
+    "move_in_date": "2026-01-01", "move_out_date": null, "status": "active",
+    "crm_link": null
+  },
+  {
+    "id": "lease-002", "unit_id": "unit-002", "tenant_id": "tenant-002",
+    "contract_start": "2026-02-01", "contract_end": "2026-07-31",
+    "move_in_date": "2026-02-01", "move_out_date": null, "status": "active",
+    "crm_link": null
+  },
+  {
+    "id": "lease-003", "unit_id": "unit-004", "tenant_id": "tenant-003",
+    "contract_start": "2026-03-15", "contract_end": "2026-09-14",
+    "move_in_date": "2026-03-15", "move_out_date": null, "status": "active",
+    "crm_link": null
+  },
+  {
+    "id": "lease-004", "unit_id": "unit-006", "tenant_id": "tenant-004",
+    "contract_start": "2026-01-01", "contract_end": "2026-06-30",
+    "move_in_date": "2026-01-01", "move_out_date": null, "status": "active",
+    "crm_link": null
+  },
+  {
+    "id": "lease-005", "unit_id": "unit-007", "tenant_id": "tenant-005",
+    "contract_start": "2026-04-01", "contract_end": "2026-09-30",
+    "move_in_date": "2026-04-01", "move_out_date": null, "status": "active",
+    "crm_link": null
+  },
+  {
+    "id": "lease-006", "unit_id": "unit-010", "tenant_id": "tenant-006",
+    "contract_start": "2026-01-15", "contract_end": "2026-07-14",
+    "move_in_date": "2026-01-15", "move_out_date": null, "status": "active",
+    "crm_link": null
+  },
+  {
+    "id": "lease-007", "unit_id": "unit-011", "tenant_id": "tenant-007",
+    "contract_start": "2026-05-01", "contract_end": "2026-10-31",
+    "move_in_date": "2026-05-01", "move_out_date": null, "status": "active",
+    "crm_link": null
+  },
+  {
+    "id": "lease-008", "unit_id": "unit-014", "tenant_id": "tenant-008",
+    "contract_start": "2026-05-15", "contract_end": "2026-11-14",
+    "move_in_date": "2026-05-15", "move_out_date": null, "status": "active",
+    "crm_link": null
+  },
+  {
+    "id": "lease-009", "unit_id": "unit-003", "tenant_id": "tenant-001",
+    "contract_start": "2025-06-01", "contract_end": "2026-04-30",
+    "move_in_date": "2025-06-01", "move_out_date": "2026-04-30", "status": "expired",
+    "crm_link": null
+  },
+  {
+    "id": "lease-010", "unit_id": "unit-008", "tenant_id": "tenant-002",
+    "contract_start": "2025-10-01", "contract_end": "2026-03-31",
+    "move_in_date": "2025-10-01", "move_out_date": "2026-03-31", "status": "expired",
+    "crm_link": null
+  },
+  {
+    "id": "lease-011", "unit_id": "unit-013", "tenant_id": null,
+    "contract_start": "2026-04-01", "contract_end": "2026-09-30",
+    "move_in_date": null, "move_out_date": null, "status": "active",
+    "crm_link": null
+  }
+]
