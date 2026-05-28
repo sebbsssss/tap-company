@@ -601,7 +601,7 @@
           <div class="ob-checklist__row" id="brandStep2">
             <span class="ob-checklist__num"><span>2</span></span>
             <div>
-              <div class="ob-checklist__label">Pick your role &amp; properties</div>
+              <div class="ob-checklist__label">Pick your role</div>
               <div class="ob-checklist__hint">We'll route relevant alerts and reports to you.</div>
             </div>
           </div>
@@ -643,17 +643,17 @@
           <div class="login__field-row">
             <div class="login__field">
               <label class="login__label" for="firstName">First name</label>
-              <input id="firstName" class="login__input" type="text" placeholder="Shi Ying" autocomplete="given-name" required />
+              <input id="firstName" class="login__input" type="text" placeholder="John" autocomplete="given-name" required />
             </div>
             <div class="login__field">
               <label class="login__label" for="lastName">Last name</label>
-              <input id="lastName" class="login__input" type="text" placeholder="Tan" autocomplete="family-name" required />
+              <input id="lastName" class="login__input" type="text" placeholder="Doe" autocomplete="family-name" required />
             </div>
           </div>
 
           <div class="login__field">
             <label class="login__label" for="email">Work Email</label>
-            <input id="email" class="login__input" type="email" placeholder="shiying@assemblyplace.co" autocomplete="email" required />
+            <input id="email" class="login__input" type="email" placeholder="john.doe@assemblyplace.co" autocomplete="email" required />
           </div>
 
           <div class="login__field">
@@ -694,7 +694,7 @@
         <div class="step" data-step="2">
           <div class="login__form-eyebrow">Step 2 of 2</div>
           <h2 class="login__form-title">Your workspace</h2>
-          <p class="login__form-lede">Choose your role and which properties you need access to.</p>
+          <p class="login__form-lede">Choose your role. All properties are included by default — an admin will confirm your access.</p>
 
           <div class="login__field">
             <label class="login__label">Your role</label>
@@ -719,18 +719,6 @@
                 <span class="role__name"><span class="role__icon"></span>Admin</span>
                 <span class="role__hint">User access, CRM sync, audit logs.</span>
               </button>
-            </div>
-          </div>
-
-          <div class="login__field">
-            <label class="login__label">
-              <span>Properties</span>
-              <span class="login__label-hint" id="propCount">0 selected</span>
-            </label>
-            <div class="props" id="propsList"></div>
-            <div style="display:flex;gap:14px;padding-top:4px;">
-              <button type="button" class="props__bulk" data-bulk="all">Select all</button>
-              <button type="button" class="props__bulk" data-bulk="none">Clear</button>
             </div>
           </div>
 
@@ -778,19 +766,8 @@
         firstName: "", lastName: "",
         email: "", password: "",
         role: "ops",
-        properties: ["P01", "P02"],
+        properties: "all",   // always all properties by default
       };
-
-      const PROPS = [
-        { id: "P01", name: "Ember House",        type: "Co-living", region: "North"   },
-        { id: "P02", name: "Lattice Court",      type: "Co-living", region: "Central" },
-        { id: "P03", name: "Mercer Lofts",       type: "Serviced",  region: "Central" },
-        { id: "P04", name: "Northshore Studios", type: "Student",   region: "North"   },
-        { id: "P05", name: "Oak & Pine",         type: "Co-living", region: "East"    },
-        { id: "P06", name: "Parkline Yard",      type: "Co-living", region: "South"   },
-        { id: "P07", name: "Quartz Heights",     type: "Serviced",  region: "West"    },
-        { id: "P08", name: "Riverwalk Annex",    type: "Student",   region: "East"    },
-      ];
 
       const $ = s => document.querySelector(s);
       const $$ = s => Array.from(document.querySelectorAll(s));
@@ -799,7 +776,6 @@
       const email     = $("#email"),     password  = $("#password");
       const confirm   = $("#confirm"),   terms     = $("#terms");
       const errorBox1 = $("#errorBox1"), errorBox2 = $("#errorBox2");
-      const propsList = $("#propsList"), propCount = $("#propCount");
       const stepperPills = $$(".stepper__pill");
       const brandRows = [$("#brandStep1"), $("#brandStep2"), $("#brandStep3")];
 
@@ -893,42 +869,11 @@
         });
       });
 
-      // Property list
-      function renderProps() {
-        propsList.innerHTML = PROPS.map(p => `
-          <label class="props__row">
-            <input type="checkbox" data-pid="${p.id}" ${state.properties.includes(p.id) ? "checked" : ""}/>
-            <span>${p.name}</span>
-            <span class="meta">${p.type} · ${p.region}</span>
-          </label>`).join("");
-        propsList.querySelectorAll("input").forEach(inp => {
-          inp.addEventListener("change", () => {
-            const pid = inp.dataset.pid;
-            if (inp.checked) { if (!state.properties.includes(pid)) state.properties.push(pid); }
-            else             { state.properties = state.properties.filter(x => x !== pid); }
-            updatePropCount();
-          });
-        });
-        updatePropCount();
-      }
-      function updatePropCount() {
-        propCount.textContent = state.properties.length + " of " + PROPS.length + " selected";
-      }
-      $$("[data-bulk]").forEach(b => b.addEventListener("click", () => {
-        state.properties = b.dataset.bulk === "all" ? PROPS.map(p => p.id) : [];
-        renderProps();
-      }));
-      renderProps();
-
       // Submit (Step 2 → 3)
       $("#signupForm").addEventListener("submit", e => {
         e.preventDefault();
         if (state.step !== 2) return;
         clearErr2();
-        if (state.properties.length === 0) {
-          showErr(errorBox2, "Select at least one property — or pick Admin/GM to request all.");
-          return;
-        }
         if (!terms.checked) {
           showErr(errorBox2, "Please accept the Terms of Service and Privacy Policy.");
           return;
@@ -949,19 +894,36 @@
           lbl.textContent = "Create account";
 
           const roleLabel = ({ ops: "Operations", finance: "Finance", gm: "General Manager", admin: "Admin" })[state.role];
-          const propLabel = state.properties.length === PROPS.length
-            ? "All properties"
-            : state.properties.length + " selected (" + state.properties.join(", ") + ")";
 
           $("#doneEmail").textContent = state.email;
           $("#doneSummary").innerHTML = `
             <dt>Name</dt><dd>${state.firstName} ${state.lastName}</dd>
             <dt>Email</dt><dd>${state.email}</dd>
             <dt>Role</dt><dd>${roleLabel}</dd>
-            <dt>Properties</dt><dd>${propLabel}</dd>
+            <dt>Access</dt><dd>All properties — pending admin approval</dd>
           `;
 
           localStorage.setItem("tap.email", state.email);
+          localStorage.setItem("tap.firstName", state.firstName);
+          localStorage.setItem("tap.lastName", state.lastName);
+          localStorage.setItem("tap.role", state.role);
+
+          // Add join request so admin panel can review it
+          const reqId = "REQ-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+          const existing = JSON.parse(localStorage.getItem("tap.joinRequests") || "[]");
+          existing.unshift({
+            id: reqId,
+            firstName: state.firstName,
+            lastName: state.lastName,
+            email: state.email,
+            role: state.role,
+            properties: "all",
+            submitted: new Date().toISOString(),
+            status: "pending",
+            note: "Submitted via sign-up form.",
+          });
+          localStorage.setItem("tap.joinRequests", JSON.stringify(existing));
+
           setStep(3);
         }, 1100);
       });

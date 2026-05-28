@@ -19,6 +19,15 @@ const ACCENT_INK = {
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
+  // -------- User identity & role (persisted) --------
+  const [role, setRoleState] = useState(() => localStorage.getItem("tap.role") || "admin");
+  const [firstName] = useState(() => localStorage.getItem("tap.firstName") || "Sebastien");
+  const [lastName]  = useState(() => localStorage.getItem("tap.lastName")  || "");
+  function setRole(r) {
+    setRoleState(r);
+    localStorage.setItem("tap.role", r);
+  }
+
   // Apply accent
   useEffect(() => {
     const root = document.documentElement;
@@ -64,6 +73,11 @@ function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
   function go(r) { location.hash = "#" + r; }
+
+  // Gate admin route — redirect non-admins away
+  useEffect(() => {
+    if (route === "admin" && role !== "admin") go("overview");
+  }, [route, role]);
 
   // View mode (Finance / Operations)
   const [viewMode, setViewMode] = useState(() => localStorage.getItem("tap.view") || "operations");
@@ -178,6 +192,17 @@ function App() {
   // Toast
   const [showToast, toastEl] = useToast();
 
+  // Pending admin request count (for sidebar badge)
+  const pendingCount = useMemo(() => {
+    try {
+      const dynamic = JSON.parse(localStorage.getItem("tap.joinRequests") || "[]");
+      const decisions = JSON.parse(localStorage.getItem("tap.requestDecisions") || "{}");
+      const seedPending = 4; // 4 of the 6 seed requests start pending
+      const allDynamic = dynamic.filter(r => !decisions[r.id] || decisions[r.id].status === "pending").length;
+      return seedPending + allDynamic;
+    } catch (e) { return 0; }
+  }, [route]);
+
   // Page padding density
   const mainCls = "main" + (t.density === "compact" ? " main--dense" : (t.density === "comfy" ? " main--spacious" : ""));
 
@@ -188,6 +213,11 @@ function App() {
         go={go}
         insightsCount={filteredInsights.length}
         dqCount={filteredDQ.length}
+        role={role}
+        setRole={setRole}
+        firstName={firstName}
+        lastName={lastName}
+        pendingCount={pendingCount}
       />
       <div className={mainCls}>
         {route === "overview" && (
@@ -230,6 +260,9 @@ function App() {
             setPerPropertyTarget={setPerPropertyTarget}
             showToast={showToast}
           />
+        )}
+        {route === "admin" && role === "admin" && (
+          <AdminScreen showToast={showToast} />
         )}
       </div>
 
@@ -278,18 +311,31 @@ function App() {
 // ---------------------------------------------------------------------
 // Sidebar
 // ---------------------------------------------------------------------
-function Sidebar({ route, go, insightsCount, dqCount }) {
+const ROLE_LABEL = { ops: "Operations", finance: "Finance", gm: "General Manager", admin: "Admin" };
+
+function Sidebar({ route, go, insightsCount, dqCount, role, setRole, firstName, lastName, pendingCount }) {
   const items = [
     { id: "overview",   label: "Overview",   icon: "◉" },
     { id: "properties", label: "Properties", icon: "▤" },
     { id: "insights",   label: "Insights",   icon: "◇", count: insightsCount + dqCount },
     { id: "settings",   label: "Settings",   icon: "⚙" },
   ];
+  if (role === "admin") {
+    items.splice(3, 0, { id: "admin", label: "Admin", icon: "◈", count: pendingCount });
+  }
+  const initials = (firstName?.[0] || "?") + (lastName?.[0] || "");
+
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
         <span className="brand-wm">TAP</span>
         <span className="brand-badge">Occupancy</span>
+      </div>
+      <div style={{ padding: "0 20px 18px", marginTop: -16,
+                    fontFamily: "var(--font-mono)", fontSize: 9.5,
+                    letterSpacing: "0.18em", textTransform: "uppercase",
+                    color: "var(--ink-4)" }}>
+        The Assembly Place
       </div>
 
       <div className="sidebar__section">Co-Living</div>
@@ -306,8 +352,60 @@ function Sidebar({ route, go, insightsCount, dqCount }) {
       </nav>
 
       <div className="sidebar__foot">
-        <div><strong>Source</strong> · Zoho CRM</div>
-        <div>Synced 2 min ago</div>
+        {/* User identity */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 10,
+                      borderBottom: "1px solid var(--line)" }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: "50%",
+            background: role === "admin" ? "var(--ink-1)" : "var(--bg-2)",
+            color:      role === "admin" ? "var(--bg-0)" : "var(--ink-2)",
+            display: "grid", placeItems: "center",
+            fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700,
+            flexShrink: 0,
+          }}>{initials}</div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ color: "var(--ink-1)", fontSize: 11, fontWeight: 600,
+                          fontFamily: "var(--font-sans)", letterSpacing: 0,
+                          textTransform: "none", whiteSpace: "nowrap",
+                          overflow: "hidden", textOverflow: "ellipsis" }}>
+              {firstName} {lastName}
+            </div>
+            <div style={{ fontSize: 9, letterSpacing: "0.14em", color: "var(--ink-4)" }}>
+              {ROLE_LABEL[role] || role}
+            </div>
+          </div>
+        </div>
+
+        {/* Demo role switcher */}
+        <div style={{ paddingTop: 6 }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.18em", color: "var(--ink-4)",
+                        marginBottom: 6, fontWeight: 700 }}>
+            View as (demo)
+          </div>
+          <select
+            className="select"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            style={{ width: "100%", fontSize: 10, padding: "5px 22px 5px 8px", minHeight: 26 }}>
+            <option value="admin">Admin</option>
+            <option value="gm">General Manager</option>
+            <option value="finance">Finance</option>
+            <option value="ops">Operations</option>
+          </select>
+        </div>
+
+        <div style={{ paddingTop: 10, borderTop: "1px solid var(--line)", marginTop: 8 }}>
+          <div><strong>Source</strong> · Zoho CRM</div>
+          <div>Synced 2 min ago</div>
+        </div>
+
+        <a href="login.html" style={{
+          marginTop: 8, padding: "6px 0", color: "var(--ink-3)",
+          textDecoration: "none", letterSpacing: "0.14em",
+          textTransform: "uppercase", fontWeight: 600, fontSize: 9.5,
+        }}>
+          Sign out ↗
+        </a>
       </div>
     </aside>
   );
