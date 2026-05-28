@@ -11,16 +11,19 @@ function OverviewScreen({
   layout, onOpenProperty, targetOcc,
 }) {
   const D = window.TAP_DATA;
+  const monthYear = fmtMonthYear(D.MONTH_START);
   const isFinance = viewMode === "finance";
   const headlineRate = isFinance ? portfolio.financeRate : portfolio.opsRate;
   const headlineLabel = isFinance ? "Finance %" : "Operations %";
-  const headlineHelper = isFinance ? "Occupied at any point in May 2026" : "Avg of daily occupancy across May 2026";
+  const headlineHelper = isFinance
+    ? `Occupied at any point in ${monthYear}`
+    : `Avg of daily occupancy across ${monthYear}`;
 
   return (
     <>
       <div className="pageheader">
         <div className="pageheader__title">
-          <div className="t-eyebrow">Co-living · May 2026</div>
+          <div className="t-eyebrow">Co-living · {monthYear}</div>
           <h1 className="t-h1">Occupancy</h1>
           <p className="t-lede">{headlineHelper}.</p>
         </div>
@@ -123,6 +126,12 @@ function ViewExplainer({ viewMode }) {
 // KPI Summary — 8 cards
 // ---------------------------------------------------------------------
 function KPISummary({ portfolio, viewMode, dense }) {
+  const D = window.TAP_DATA;
+  const monthAbbr = fmtMonthAbbr(D.MONTH_START);
+  const prevMonthAbbr = fmtMonthAbbr(
+    D.MONTH_START ? new Date(Date.UTC(D.MONTH_START.getUTCFullYear(), D.MONTH_START.getUTCMonth() - 1, 1)) : null
+  );
+  const todayLabel = D.TODAY.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const isFinance = viewMode === "finance";
   const headlineRate = isFinance ? portfolio.financeRate : portfolio.opsRate;
   return (
@@ -130,7 +139,7 @@ function KPISummary({ portfolio, viewMode, dense }) {
       <KPI
         label={isFinance ? "Finance Occupancy" : "Operations Occupancy"}
         value={fmtPct(headlineRate, 1)}
-        sub={fmtSigned(portfolio.delta, 1) + " vs Apr"}
+        sub={fmtSigned(portfolio.delta, 1) + " vs " + prevMonthAbbr}
         subTone={portfolio.delta >= 0 ? "good" : "bad"}
         accent
       />
@@ -139,9 +148,9 @@ function KPISummary({ portfolio, viewMode, dense }) {
             sub={fmtPct(portfolio.occupied / portfolio.totalUnits, 0) + " of stock"} />
       <KPI label="Vacant" value={fmtNum(portfolio.vacant)}
             sub={`${portfolio.reserved} reserved · ${portfolio.maintenance} mnt`} />
-      <KPI label="Today" value={fmtPct(portfolio.todayRate, 1)} sub="As of May 28" />
-      <KPI label="Highest Day" value={fmtPct(portfolio.highest.rate, 1)} sub={"May " + portfolio.highest.day} subTone="good" />
-      <KPI label="Lowest Day"  value={fmtPct(portfolio.lowest.rate, 1)}  sub={"May " + portfolio.lowest.day}  subTone="bad" />
+      <KPI label="Today" value={fmtPct(portfolio.todayRate, 1)} sub={"As of " + todayLabel} />
+      <KPI label="Highest Day" value={fmtPct(portfolio.highest.rate, 1)} sub={monthAbbr + " " + portfolio.highest.day} subTone="good" />
+      <KPI label="Lowest Day"  value={fmtPct(portfolio.lowest.rate, 1)}  sub={monthAbbr + " " + portfolio.lowest.day}  subTone="bad" />
       <KPI label="Below Target" value={fmtNum(portfolio.belowTarget)}
             sub={`${portfolio.moveIns} move-ins · ${portfolio.moveOuts} out`}
             subTone={portfolio.belowTarget > 0 ? "warn" : "good"} />
@@ -154,13 +163,14 @@ function KPISummary({ portfolio, viewMode, dense }) {
 // ---------------------------------------------------------------------
 function BalancedLayout({ filteredStats, portfolio, viewMode, insights, dataQuality, onOpenProperty, targetOcc }) {
   const D = window.TAP_DATA;
+  const monthYear = fmtMonthYear(D.MONTH_START);
   return (
     <>
       <div className="row row--main-rail">
         <div className="panel">
           <div className="panel__head">
             <div className="panel__head-title">
-              <div className="t-eyebrow">Daily Occupancy Rate · May 2026</div>
+              <div className="t-eyebrow">Daily Occupancy Rate · {monthYear}</div>
               <div className="t-h2">{viewMode === "finance" ? "Coverage trend" : "Daily occupancy trend"}</div>
             </div>
             <div className="t-eyebrow">{viewMode === "finance" ? "Cumulative unique occupancy" : "Today " + fmtPct(portfolio.todayRate, 1)}</div>
@@ -207,6 +217,7 @@ function BalancedLayout({ filteredStats, portfolio, viewMode, insights, dataQual
 // ---------------------------------------------------------------------
 function StackedLayout({ filteredStats, portfolio, viewMode, insights, dataQuality, onOpenProperty, targetOcc }) {
   const D = window.TAP_DATA;
+  const monthYear = fmtMonthYear(D.MONTH_START);
   return (
     <>
       <div className="panel" style={{ marginBottom: 16 }}>
@@ -245,7 +256,7 @@ function StackedLayout({ filteredStats, portfolio, viewMode, insights, dataQuali
             <div className="panel__head">
               <div className="panel__head-title">
                 <div className="t-eyebrow">Calendar</div>
-                <div className="t-h2">May 2026</div>
+                <div className="t-h2">{monthYear}</div>
               </div>
             </div>
             <div className="panel__body">

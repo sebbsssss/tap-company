@@ -8,15 +8,24 @@ function FilterBar({ filters, setFilter, resetFilters, viewMode, setViewMode }) 
   const regions = ["All", "North", "South", "East", "West", "Central"];
   const statuses = ["All", "Occupied", "Vacant", "Reserved", "Maintenance"];
 
+  // Generate 4 month options ending at the current data month.
+  const monthOptions = useMemo(() => {
+    const ms = D.MONTH_START;
+    return Array.from({ length: 4 }, (_, i) => {
+      const d = new Date(Date.UTC(ms.getUTCFullYear(), ms.getUTCMonth() - i, 1));
+      return {
+        value: d.toISOString().slice(0, 7),
+        label: d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" }),
+      };
+    });
+  }, []);
+
   return (
     <div className="filterbar">
       <div className="filterbar__group">
         <span className="filterbar__label">Month</span>
         <select className="select" value={filters.month} onChange={(e) => setFilter("month", e.target.value)}>
-          <option value="2026-05">May 2026</option>
-          <option value="2026-04">Apr 2026</option>
-          <option value="2026-03">Mar 2026</option>
-          <option value="2026-02">Feb 2026</option>
+          {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
       </div>
       <div className="filterbar__sep" />

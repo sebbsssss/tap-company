@@ -12,6 +12,9 @@ function cssVar(name) {
 
 // -------- Daily occupancy trend (line) -------------------------------
 function DailyTrendChart({ daily, todayDay, viewMode, target }) {
+  const D = window.TAP_DATA;
+  const monthAbbr = fmtMonthAbbr(D.MONTH_START);
+  const fullYear = D.MONTH_START ? D.MONTH_START.getUTCFullYear() : new Date().getFullYear();
   const data = daily.map(d => ({
     day: d.day,
     rate: +(d.rate * 100).toFixed(1),
@@ -32,7 +35,7 @@ function DailyTrendChart({ daily, todayDay, viewMode, target }) {
           tickLine={false}
           axisLine={{ stroke: "rgba(20,18,12,0.14)" }}
           interval={2}
-          tickFormatter={d => "May " + d}
+          tickFormatter={d => monthAbbr + " " + d}
         />
         <R.YAxis
           tick={{ fill: ink3, fontSize: 10, fontFamily: "Inconsolata" }}
@@ -44,7 +47,7 @@ function DailyTrendChart({ daily, todayDay, viewMode, target }) {
         />
         <R.Tooltip
           formatter={(v, _n, p) => [`${v}%  (${p.payload.occ}/${p.payload.total})`, viewMode === "finance" ? "Occupied" : "Daily rate"]}
-          labelFormatter={d => "May " + d + ", 2026"}
+          labelFormatter={d => monthAbbr + " " + d + ", " + fullYear}
           cursor={{ stroke: "rgba(20,18,12,0.22)", strokeDasharray: "2 3" }}
         />
         {target != null && (
@@ -136,8 +139,10 @@ function heatColor(rate) {
 }
 
 function CalendarHeatmap({ daily, todayDay }) {
-  // Build 6x7 grid. May 1, 2026 = Friday. Pad with empties.
-  const FIRST_DOW = new Date(Date.UTC(2026, 4, 1)).getUTCDay(); // 5 (Fri)
+  const D = window.TAP_DATA;
+  const monthAbbr = fmtMonthAbbr(D.MONTH_START);
+  // Derive first day-of-week from TAP_DATA.MONTH_START so the grid is correct for any month.
+  const FIRST_DOW = D.MONTH_START ? D.MONTH_START.getUTCDay() : 0;
   const cells = [];
   for (let i = 0; i < FIRST_DOW; i++) cells.push(null);
   for (let i = 0; i < daily.length; i++) cells.push(daily[i]);
@@ -156,7 +161,7 @@ function CalendarHeatmap({ daily, todayDay }) {
             <div key={i}
                  className={`cal__cell${c.day === todayDay ? " is-today" : ""}`}
                  style={{ background: future ? "transparent" : heatColor(c.rate), opacity: future ? 0.35 : 1 }}
-                 title={`May ${c.day}: ${(c.rate * 100).toFixed(1)}%  (${c.occ}/${c.total})`}>
+                 title={`${monthAbbr} ${c.day}: ${(c.rate * 100).toFixed(1)}%  (${c.occ}/${c.total})`}>
               <span className="cal__day">{c.day}</span>
               <span className="cal__pct">{future ? "—" : (c.rate * 100).toFixed(0) + "%"}</span>
             </div>

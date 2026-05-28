@@ -23,6 +23,12 @@ const fmtDateMD = (s) => {
   const d = new Date(s + "T00:00:00Z");
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 };
+const fmtMonthYear = (d) => d
+  ? d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" })
+  : "";
+const fmtMonthAbbr = (d) => d
+  ? d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" })
+  : "";
 const statusLabel = (s) => ({ occupied: "Occupied", vacant: "Vacant", reserved: "Reserved", maintenance: "Maintenance" }[s] || s);
 
 // -------- tag / dot --------------------------------------------------
@@ -177,6 +183,6 @@ function Segmented({ value, onChange, options }) {
 
 // expose
 Object.assign(window, {
-  fmtPct, fmtPct0, fmtNum, fmtSigned, fmtDateShort, fmtDateMD, statusLabel,
+  fmtPct, fmtPct0, fmtNum, fmtSigned, fmtDateShort, fmtDateMD, fmtMonthYear, fmtMonthAbbr, statusLabel,
   Tag, Dot, KPI, PctBar, MixBar, Sparkline, Dropdown, useToast, Segmented,
 });

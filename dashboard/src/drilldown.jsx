@@ -119,12 +119,13 @@ function DrilldownSummary({ stat, viewMode }) {
 
 function DrilldownTrend({ stat, viewMode }) {
   const D = window.TAP_DATA;
+  const monthYear = fmtMonthYear(D.MONTH_START);
   return (
     <div style={{ paddingTop: 18 }}>
       <div className="panel">
         <div className="panel__head">
           <div className="panel__head-title">
-            <div className="t-eyebrow">Daily Occupancy · May 2026</div>
+            <div className="t-eyebrow">Daily Occupancy · {monthYear}</div>
             <div className="t-h2">{stat.property.name}</div>
           </div>
         </div>
@@ -246,7 +247,7 @@ function UnitDetail({ unit }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(31, 1fr)", gap: 2 }}>
           {unit.days.map((occ, i) => (
             <div key={i}
-                 title={`May ${i+1}: ${occ ? "occupied" : "vacant"}`}
+                 title={`${fmtMonthAbbr(window.TAP_DATA.MONTH_START)} ${i+1}: ${occ ? "occupied" : "vacant"}`}
                  style={{
                    aspectRatio: "1/1.6",
                    background: occ ? "var(--occ)" : "var(--bg-2)",

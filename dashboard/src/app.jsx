@@ -70,7 +70,7 @@ function App() {
   useEffect(() => { localStorage.setItem("tap.view", viewMode); }, [viewMode]);
 
   // Filters
-  const FILTER_DEFAULTS = { month: "2026-05", property: "All", ptype: "All", region: "All", status: "all" };
+  const FILTER_DEFAULTS = { month: D.MONTH_START.toISOString().slice(0, 7), property: "All", ptype: "All", region: "All", status: "all" };
   const [filters, setFilters] = useState(FILTER_DEFAULTS);
   function setFilter(k, v) { setFilters(f => ({ ...f, [k]: v })); }
   function resetFilters() { setFilters(FILTER_DEFAULTS); }
@@ -120,7 +120,7 @@ function App() {
       dailyAgg,
       highest: sortedDays[0] || { day: 1, rate: 0 },
       lowest:  sortedDays[sortedDays.length - 1] || { day: 1, rate: 0 },
-      todayRate: dailyAgg[D.TODAY_DAY - 1].rate,
+      todayRate: (dailyAgg[Math.min(D.TODAY_DAY - 1, dailyAgg.length - 1)] || { rate: 0 }).rate,
       belowTarget: filteredStats.filter(s => s.opsRate < s.property.target).length,
     };
   }, [filteredStats]);
