@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Create account · The Assembly Place</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .login {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 100vh;
+      background: var(--bg-0);
+    }
+    .login__brand {
+      background: var(--ink-1);
+      color: var(--bg-0);
+      padding: 40px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+    .login__brand::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 18px 18px;
+      mask-image: linear-gradient(180deg, transparent 0%, black 40%, black 80%, transparent 100%);
+      -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 40%, black 80%, transparent 100%);
+      pointer-events: none;
+    }
+    .login__brand-top, .login__brand-mid, .login__brand-bot { position: relative; z-index: 1; }
+    .login__brand-top { display: flex; align-items: baseline; gap: 12px; }
+    .login__wm {
+      font-family: var(--font-mono);
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--bg-0);
+    }
+    .login__wm-sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(251,250,246,0.55);
+      border-left: 1px solid rgba(255,255,255,0.18);
+      padding-left: 10px;
+    }
+    .login__brand-mid { max-width: 480px; }
+    .login__eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: rgba(251,250,246,0.50);
+      margin-bottom: 18px;
+    }
+    .login__headline {
+      font-family: var(--font-sans);
+      font-size: 40px;
+      font-weight: 600;
+      letter-spacing: -0.022em;
+      line-height: 1.05;
+      color: var(--bg-0);
+      margin: 0 0 22px;
+      text-wrap: balance;
+    }
+    .login__headline em { font-style: italic; font-weight: 400; color: rgba(251,250,246,0.85); }
+    .login__sub {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: rgba(251,250,246,0.70);
+      line-height: 1.55;
+      max-width: 420px;
+      margin: 0;
+    }
+
+    /* Onboarding checklist */
+    .ob-checklist {
+      margin-top: 36px;
+      padding-top: 26px;
+      border-top: 1px solid rgba(255,255,255,0.10);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .ob-checklist__row {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .ob-checklist__num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      color: rgba(251,250,246,0.50);
+      border: 1px solid rgba(255,255,255,0.18);
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+    .ob-checklist__row.is-active .ob-checklist__num {
+      background: var(--bg-0); color: var(--ink-1); border-color: var(--bg-0); font-weight: 800;
+    }
+    .ob-checklist__row.is-done .ob-checklist__num {
+      background: rgba(47,125,91,0.18);
+      color: rgba(251,250,246,0.90);
+      border-color: rgba(47,125,91,0.40);
+    }
+    .ob-checklist__row.is-done .ob-checklist__num::before { content: "✓"; }
+    .ob-checklist__row.is-done .ob-checklist__num span { display: none; }
+    .ob-checklist__label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(251,250,246,0.90);
+      line-height: 1.4;
+    }
+    .ob-checklist__hint {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: rgba(251,250,246,0.55);
+      margin-top: 2px;
+      line-height: 1.4;
+    }
+    .ob-checklist__row:not(.is-active):not(.is-done) .ob-checklist__label,
+    .ob-checklist__row:not(.is-active):not(.is-done) .ob-checklist__hint { color: rgba(251,250,246,0.40); }
+
+    .login__brand-bot {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(251,250,246,0.40);
+    }
+    .login__brand-bot a { color: rgba(251,250,246,0.65); text-decoration: none; }
+    .login__brand-bot a:hover { color: var(--bg-0); }
+
+    /* Form side */
+    .login__form-wrap {
+      padding: 40px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .login__form {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .login__form-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+    .login__form-title {
+      font-family: var(--font-sans);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.018em;
+      line-height: 1.1;
+      color: var(--ink-1);
+      margin: 0 0 8px;
+    }
+    .login__form-lede {
+      font-size: 13px;
+      color: var(--ink-3);
+      margin: 0 0 24px;
+      line-height: 1.55;
+    }
+
+    /* Stepper */
+    .stepper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 26px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+      font-weight: 600;
+    }
+    .stepper__pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--card);
+    }
+    .stepper__pill .n {
+      font-weight: 700;
+      width: 14px;
+      height: 14px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--bg-2);
+      color: var(--ink-3);
+      font-size: 9px;
+      letter-spacing: 0;
+    }
+    .stepper__pill.is-active {
+      background: var(--ink-1);
+      color: var(--bg-0);
+      border-color: var(--ink-1);
+    }
+    .stepper__pill.is-active .n { background: var(--bg-0); color: var(--ink-1); }
+    .stepper__pill.is-done .n { background: var(--occ); color: var(--bg-0); }
+    .stepper__pill.is-done .n::before { content: "✓"; }
+    .stepper__pill.is-done .n span { display: none; }
+    .stepper__line { flex: 1; height: 1px; background: var(--line-strong); }
+
+    /* Fields */
+    .login__field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .login__field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .login__label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .login__label-hint {
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      color: var(--ink-4);
+      letter-spacing: 0.08em;
+      font-weight: 500;
+      text-transform: none;
+    }
+    .login__input, .login__select {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--line-strong);
+      border-radius: var(--r-2);
+      padding: 11px 12px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--ink-1);
+      transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+      outline: none;
+    }
+    .login__input::placeholder { color: var(--ink-5); }
+    .login__input:focus, .login__select:focus {
+      border-color: var(--line-contrast);
+      box-shadow: var(--ring);
+    }
+    .login__input.is-error, .login__select.is-error {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgba(184,58,43,0.10);
+    }
+
+    /* Password strength */
+    .pwd-strength {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .pwd-strength__bars { display: flex; gap: 3px; flex: 1; }
+    .pwd-strength__bar {
+      flex: 1;
+      height: 3px;
+      background: var(--bg-2);
+      border-radius: 2px;
+      transition: background var(--dur-fast) var(--ease);
+    }
+    .pwd-strength__bar.is-on { background: var(--ink-3); }
+    .pwd-strength.is-1 .pwd-strength__bar.is-on { background: var(--danger); }
+    .pwd-strength.is-2 .pwd-strength__bar.is-on { background: var(--warn); }
+    .pwd-strength.is-3 .pwd-strength__bar.is-on { background: #BFA53A; }
+    .pwd-strength.is-4 .pwd-strength__bar.is-on { background: var(--good); }
+    .pwd-strength__label {
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+      min-width: 56px;
+      text-align: right;
+      font-weight: 600;
+    }
+
+    /* Role cards */
+    .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+    .role {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 14px;
+      background: var(--card);
+      border: 1px solid var(--line-strong);
+      border-radius: var(--r-2);
+      cursor: pointer;
+      transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+      text-align: left;
+      font-family: inherit;
+    }
+    .role:hover { background: var(--bg-1); border-color: var(--line-contrast); }
+    .role input { position: absolute; opacity: 0; pointer-events: none; }
+    .role__name {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-1);
+      letter-spacing: -0.005em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .role__icon {
+      width: 14px; height: 14px;
+      border-radius: 3px;
+      border: 1.5px solid var(--line-contrast);
+      flex-shrink: 0;
+      position: relative;
+      background: var(--card);
+    }
+    .role.is-selected { background: rgba(14,14,12,0.04); border-color: var(--ink-1); box-shadow: 0 0 0 1px var(--ink-1); }
+    .role.is-selected .role__icon { background: var(--ink-1); border-color: var(--ink-1); }
+    .role.is-selected .role__icon::after {
+      content: "";
+      position: absolute;
+      left: 3px; top: 1px;
+      width: 4px; height: 7px;
+      border: solid var(--bg-0);
+      border-width: 0 1.5px 1.5px 0;
+      transform: rotate(45deg);
+    }
+    .role__hint { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-4); letter-spacing: 0.04em; line-height: 1.4; }
+
+    /* Property list */
+    .props {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--r-2);
+      background: var(--card);
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 8px;
+    }
+    .props__row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink-2);
+    }
+    .props__row:last-child { border-bottom: 0; }
+    .props__row:hover { background: var(--bg-1); }
+    .props__row input {
+      appearance: none;
+      width: 13px; height: 13px;
+      border: 1px solid var(--line-contrast);
+      border-radius: 2px;
+      background: var(--card);
+      position: relative;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .props__row input:checked { background: var(--ink-1); border-color: var(--ink-1); }
+    .props__row input:checked::after {
+      content: ""; position: absolute;
+      left: 3px; top: 0px;
+      width: 4px; height: 7px;
+      border: solid var(--bg-0);
+      border-width: 0 1.5px 1.5px 0;
+      transform: rotate(45deg);
+    }
+    .props__row .meta {
+      margin-left: auto;
+      font-size: 10px;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+      font-weight: 600;
+    }
+    .props__bulk {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      padding: 4px 0;
+      font-weight: 600;
+    }
+    .props__bulk:hover { color: var(--ink-1); }
+
+    /* Terms */
+    .login__check {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+      color: var(--ink-2);
+      user-select: none;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      line-height: 1.5;
+      margin: 6px 0 20px;
+    }
+    .login__check input {
+      appearance: none;
+      width: 14px; height: 14px;
+      border: 1px solid var(--line-contrast);
+      border-radius: 2px;
+      background: var(--card);
+      cursor: pointer;
+      position: relative;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+    .login__check input:checked { background: var(--ink-1); border-color: var(--ink-1); }
+    .login__check input:checked::after {
+      content: ""; position: absolute;
+      left: 3px; top: 0px;
+      width: 4px; height: 8px;
+      border: solid var(--bg-0);
+      border-width: 0 1.5px 1.5px 0;
+      transform: rotate(45deg);
+    }
+    .login__check a { color: var(--ink-1); text-decoration: underline; text-underline-offset: 2px; }
+
+    /* Buttons */
+    .login__btn {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 13px 16px;
+      background: var(--ink-1);
+      color: var(--bg-0);
+      border: 1px solid var(--ink-1);
+      border-radius: var(--r-2);
+      cursor: pointer;
+      transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .login__btn:hover { background: transparent; color: var(--ink-1); }
+    .login__btn:disabled { opacity: 0.5; cursor: wait; }
+    .login__btn .arrow { transition: transform var(--dur-base) var(--ease); }
+    .login__btn:hover .arrow { transform: translateX(3px); }
+    .login__btn--ghost {
+      background: transparent;
+      color: var(--ink-2);
+      border-color: var(--line-strong);
+    }
+    .login__btn--ghost:hover { background: var(--bg-1); color: var(--ink-1); border-color: var(--line-contrast); }
+    .nav-row { display: grid; grid-template-columns: auto 1fr; gap: 8px; margin-top: 8px; }
+    .nav-row .login__btn { width: 100%; }
+    .login__error {
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--danger);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .login__foot {
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--ink-4);
+      letter-spacing: 0.04em;
+    }
+    .login__foot a { color: var(--ink-2); text-decoration: none; }
+    .login__foot a:hover { color: var(--ink-1); text-decoration: underline; }
+
+    /* Step transitions */
+    .step { display: none; }
+    .step.is-active { display: block; opacity: 1; animation: fadeIn 240ms var(--ease) both; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Done state */
+    .done { text-align: center; padding: 20px 0 8px; }
+    .done__icon {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--good-tint);
+      color: var(--good);
+      display: grid;
+      place-items: center;
+      margin: 0 auto 18px;
+      font-size: 24px;
+      font-weight: 700;
+      border: 1px solid rgba(47,125,91,0.30);
+    }
+    .done__h { font-family: var(--font-sans); font-size: 24px; font-weight: 700; letter-spacing: -0.018em; color: var(--ink-1); margin: 0 0 8px; }
+    .done__p { font-size: 13px; color: var(--ink-3); margin: 0 0 24px; line-height: 1.55; }
+    .done__summary {
+      text-align: left;
+      background: var(--bg-1);
+      border: 1px solid var(--line);
+      border-radius: var(--r-2);
+      padding: 14px 16px;
+      margin-bottom: 18px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 6px 14px;
+    }
+    .done__summary dt { color: var(--ink-4); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; }
+    .done__summary dd { margin: 0; color: var(--ink-1); font-variant-numeric: tabular-nums; }
+
+    @media (max-width: 900px) {
+      .login { grid-template-columns: 1fr; }
+      .login__brand { padding: 28px 24px; }
+      .login__headline { font-size: 26px; }
+      .login__form-wrap { padding: 32px 24px 56px; }
+      .roles { grid-template-columns: 1fr; }
+      .login__field-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="login">
+
+    <!-- Brand panel -->
+    <section class="login__brand">
+      <div class="login__brand-top">
+        <span class="login__wm">TAP</span>
+        <span class="login__wm-sub">The Assembly Place</span>
+      </div>
+
+      <div class="login__brand-mid">
+        <div class="login__eyebrow">Get started · Operator portal</div>
+        <h1 class="login__headline">
+          A few details and you'll be reviewing <em>occupancy</em> in under a minute.
+        </h1>
+        <p class="login__sub">
+          Your account is scoped to the properties you select. You can request more access later from the team admin.
+        </p>
+
+        <div class="ob-checklist">
+          <div class="ob-checklist__row" id="brandStep1">
+            <span class="ob-checklist__num"><span>1</span></span>
+            <div>
+              <div class="ob-checklist__label">Create your account</div>
+              <div class="ob-checklist__hint">Name, work email, and a strong password.</div>
+            </div>
+          </div>
+          <div class="ob-checklist__row" id="brandStep2">
+            <span class="ob-checklist__num"><span>2</span></span>
+            <div>
+              <div class="ob-checklist__label">Pick your role &amp; properties</div>
+              <div class="ob-checklist__hint">We'll route relevant alerts and reports to you.</div>
+            </div>
+          </div>
+          <div class="ob-checklist__row" id="brandStep3">
+            <span class="ob-checklist__num"><span>3</span></span>
+            <div>
+              <div class="ob-checklist__label">Open the dashboard</div>
+              <div class="ob-checklist__hint">Finance &amp; Operations views, ready to go.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="login__brand-bot">
+        <span>© 2026 The Assembly Place</span>
+        <span><a href="#">Support</a> · <a href="login.html">Sign in</a></span>
+      </div>
+    </section>
+
+    <!-- Form panel -->
+    <section class="login__form-wrap">
+      <form class="login__form" id="signupForm" novalidate>
+
+        <!-- Stepper -->
+        <div class="stepper" id="stepper">
+          <span class="stepper__pill is-active" data-step="1"><span class="n"><span>1</span></span> Account</span>
+          <span class="stepper__line"></span>
+          <span class="stepper__pill" data-step="2"><span class="n"><span>2</span></span> Workspace</span>
+          <span class="stepper__line"></span>
+          <span class="stepper__pill" data-step="3"><span class="n"><span>3</span></span> Done</span>
+        </div>
+
+        <!-- STEP 1 -->
+        <div class="step is-active" data-step="1">
+          <div class="login__form-eyebrow">Step 1 of 2</div>
+          <h2 class="login__form-title">Create your account</h2>
+          <p class="login__form-lede">Use your work email. We'll send a verification link after you finish setup.</p>
+
+          <div class="login__field-row">
+            <div class="login__field">
+              <label class="login__label" for="firstName">First name</label>
+              <input id="firstName" class="login__input" type="text" placeholder="Shi Ying" autocomplete="given-name" required />
+            </div>
+            <div class="login__field">
+              <label class="login__label" for="lastName">Last name</label>
+              <input id="lastName" class="login__input" type="text" placeholder="Tan" autocomplete="family-name" required />
+            </div>
+          </div>
+
+          <div class="login__field">
+            <label class="login__label" for="email">Work Email</label>
+            <input id="email" class="login__input" type="email" placeholder="shiying@assemblyplace.co" autocomplete="email" required />
+          </div>
+
+          <div class="login__field">
+            <label class="login__label" for="password">Password</label>
+            <input id="password" class="login__input" type="password" placeholder="At least 8 characters" autocomplete="new-password" required />
+            <div class="pwd-strength" id="pwdStrength">
+              <div class="pwd-strength__bars">
+                <div class="pwd-strength__bar"></div>
+                <div class="pwd-strength__bar"></div>
+                <div class="pwd-strength__bar"></div>
+                <div class="pwd-strength__bar"></div>
+              </div>
+              <div class="pwd-strength__label" id="pwdStrengthLabel">Strength</div>
+            </div>
+          </div>
+
+          <div class="login__field">
+            <label class="login__label" for="confirm">Confirm password</label>
+            <input id="confirm" class="login__input" type="password" placeholder="Repeat the password" autocomplete="new-password" required />
+          </div>
+
+          <div id="errorBox1"></div>
+
+          <div class="nav-row" style="grid-template-columns: 1fr;">
+            <button class="login__btn" type="button" id="toStep2">
+              <span>Continue</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+
+          <div class="login__foot">
+            <span>Already have an account?</span>
+            <a href="login.html">Sign in →</a>
+          </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="step" data-step="2">
+          <div class="login__form-eyebrow">Step 2 of 2</div>
+          <h2 class="login__form-title">Your workspace</h2>
+          <p class="login__form-lede">Choose your role and which properties you need access to.</p>
+
+          <div class="login__field">
+            <label class="login__label">Your role</label>
+            <div class="roles" role="radiogroup">
+              <button type="button" class="role is-selected" data-role="ops" role="radio" aria-checked="true">
+                <input type="radio" name="role" value="ops" checked />
+                <span class="role__name"><span class="role__icon"></span>Operations</span>
+                <span class="role__hint">Daily occupancy, vacancies, move-outs.</span>
+              </button>
+              <button type="button" class="role" data-role="finance" role="radio" aria-checked="false">
+                <input type="radio" name="role" value="finance" />
+                <span class="role__name"><span class="role__icon"></span>Finance</span>
+                <span class="role__hint">Monthly close, revenue, finance occupancy.</span>
+              </button>
+              <button type="button" class="role" data-role="gm" role="radio" aria-checked="false">
+                <input type="radio" name="role" value="gm" />
+                <span class="role__name"><span class="role__icon"></span>General Manager</span>
+                <span class="role__hint">Full portfolio view, target setting.</span>
+              </button>
+              <button type="button" class="role" data-role="admin" role="radio" aria-checked="false">
+                <input type="radio" name="role" value="admin" />
+                <span class="role__name"><span class="role__icon"></span>Admin</span>
+                <span class="role__hint">User access, CRM sync, audit logs.</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="login__field">
+            <label class="login__label">
+              <span>Properties</span>
+              <span class="login__label-hint" id="propCount">0 selected</span>
+            </label>
+            <div class="props" id="propsList"></div>
+            <div style="display:flex;gap:14px;padding-top:4px;">
+              <button type="button" class="props__bulk" data-bulk="all">Select all</button>
+              <button type="button" class="props__bulk" data-bulk="none">Clear</button>
+            </div>
+          </div>
+
+          <label class="login__check">
+            <input type="checkbox" id="terms" />
+            <span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>, and consent to occupancy and CRM data being processed inside TAP for reporting.</span>
+          </label>
+
+          <div id="errorBox2"></div>
+
+          <div class="nav-row">
+            <button class="login__btn login__btn--ghost" type="button" id="toStep1">
+              <span aria-hidden="true">←</span><span>Back</span>
+            </button>
+            <button class="login__btn" type="submit" id="createBtn">
+              <span id="createLabel">Create account</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 3 (Done) -->
+        <div class="step" data-step="3">
+          <div class="done">
+            <div class="done__icon">✓</div>
+            <h2 class="done__h">You're in.</h2>
+            <p class="done__p">A verification email is on the way to <strong id="doneEmail">your inbox</strong>. We'll send your admin a heads-up to approve your property access — usually within a few hours.</p>
+            <dl class="done__summary" id="doneSummary"></dl>
+            <button class="login__btn" type="button" id="goDashboard" style="width:100%;">
+              <span>Open the dashboard</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+
+      </form>
+    </section>
+
+  </main>
+
+  <script>
+    (function () {
+      const state = {
+        step: 1,
+        firstName: "", lastName: "",
+        email: "", password: "",
+        role: "ops",
+        properties: ["P01", "P02"],
+      };
+
+      const PROPS = [
+        { id: "P01", name: "Ember House",        type: "Co-living", region: "North"   },
+        { id: "P02", name: "Lattice Court",      type: "Co-living", region: "Central" },
+        { id: "P03", name: "Mercer Lofts",       type: "Serviced",  region: "Central" },
+        { id: "P04", name: "Northshore Studios", type: "Student",   region: "North"   },
+        { id: "P05", name: "Oak & Pine",         type: "Co-living", region: "East"    },
+        { id: "P06", name: "Parkline Yard",      type: "Co-living", region: "South"   },
+        { id: "P07", name: "Quartz Heights",     type: "Serviced",  region: "West"    },
+        { id: "P08", name: "Riverwalk Annex",    type: "Student",   region: "East"    },
+      ];
+
+      const $ = s => document.querySelector(s);
+      const $$ = s => Array.from(document.querySelectorAll(s));
+
+      const firstName = $("#firstName"), lastName  = $("#lastName");
+      const email     = $("#email"),     password  = $("#password");
+      const confirm   = $("#confirm"),   terms     = $("#terms");
+      const errorBox1 = $("#errorBox1"), errorBox2 = $("#errorBox2");
+      const propsList = $("#propsList"), propCount = $("#propCount");
+      const stepperPills = $$(".stepper__pill");
+      const brandRows = [$("#brandStep1"), $("#brandStep2"), $("#brandStep3")];
+
+      function setStep(n) {
+        state.step = n;
+        $$(".step").forEach(el => el.classList.toggle("is-active", +el.dataset.step === n));
+        stepperPills.forEach(p => {
+          const s = +p.dataset.step;
+          p.classList.toggle("is-active", s === n);
+          p.classList.toggle("is-done", s < n);
+        });
+        brandRows.forEach((row, i) => {
+          row.classList.toggle("is-active", i + 1 === n);
+          row.classList.toggle("is-done",   i + 1 < n);
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function isEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+      function scorePassword(pwd) {
+        let s = 0;
+        if (pwd.length >= 8) s++;
+        if (pwd.length >= 12) s++;
+        if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) s++;
+        if (/\d/.test(pwd) && /[^A-Za-z0-9]/.test(pwd)) s++;
+        return Math.min(4, s);
+      }
+      const STRENGTH_LABELS = ["Empty", "Weak", "Fair", "Good", "Strong"];
+
+      const pwdStrength = $("#pwdStrength");
+      const pwdStrengthLabel = $("#pwdStrengthLabel");
+
+      password.addEventListener("input", () => {
+        const s = scorePassword(password.value);
+        pwdStrength.className = "pwd-strength" + (s ? " is-" + s : "");
+        pwdStrength.querySelectorAll(".pwd-strength__bar").forEach((b, i) => b.classList.toggle("is-on", i < s));
+        pwdStrengthLabel.textContent = password.value ? STRENGTH_LABELS[s] : "Strength";
+        clearErr1();
+      });
+
+      function clearErr1() {
+        [firstName, lastName, email, password, confirm].forEach(el => el.classList.remove("is-error"));
+        errorBox1.innerHTML = "";
+      }
+      function clearErr2() { errorBox2.innerHTML = ""; }
+
+      [firstName, lastName, email, confirm].forEach(el => el.addEventListener("input", clearErr1));
+
+      function showErr(box, msg) { box.innerHTML = `<div class="login__error">⚠ ${msg}</div>`; }
+
+      // Step 1 → 2
+      $("#toStep2").addEventListener("click", () => {
+        clearErr1();
+        let bad = false;
+        if (!firstName.value.trim())        { firstName.classList.add("is-error"); bad = true; }
+        if (!lastName.value.trim())         { lastName.classList.add("is-error");  bad = true; }
+        if (!isEmail(email.value.trim()))   { email.classList.add("is-error");     bad = true; }
+        if (password.value.length < 8)      { password.classList.add("is-error"); bad = true; }
+        if (!confirm.value || password.value !== confirm.value) { confirm.classList.add("is-error"); bad = true; }
+
+        if (bad) {
+          let msg = "Please fill in every field correctly.";
+          if (!isEmail(email.value.trim()) && email.value) msg = "Please enter a valid work email address.";
+          if (password.value.length < 8 && password.value) msg = "Password must be at least 8 characters.";
+          if (password.value && confirm.value && password.value !== confirm.value) msg = "Passwords don't match.";
+          showErr(errorBox1, msg);
+          return;
+        }
+        state.firstName = firstName.value.trim();
+        state.lastName  = lastName.value.trim();
+        state.email     = email.value.trim();
+        state.password  = password.value;
+        setStep(2);
+      });
+
+      $("#toStep1").addEventListener("click", () => setStep(1));
+
+      // Role cards
+      $$(".role").forEach(card => {
+        card.addEventListener("click", () => {
+          $$(".role").forEach(c => {
+            c.classList.remove("is-selected");
+            c.setAttribute("aria-checked", "false");
+            c.querySelector("input").checked = false;
+          });
+          card.classList.add("is-selected");
+          card.setAttribute("aria-checked", "true");
+          card.querySelector("input").checked = true;
+          state.role = card.dataset.role;
+        });
+      });
+
+      // Property list
+      function renderProps() {
+        propsList.innerHTML = PROPS.map(p => `
+          <label class="props__row">
+            <input type="checkbox" data-pid="${p.id}" ${state.properties.includes(p.id) ? "checked" : ""}/>
+            <span>${p.name}</span>
+            <span class="meta">${p.type} · ${p.region}</span>
+          </label>`).join("");
+        propsList.querySelectorAll("input").forEach(inp => {
+          inp.addEventListener("change", () => {
+            const pid = inp.dataset.pid;
+            if (inp.checked) { if (!state.properties.includes(pid)) state.properties.push(pid); }
+            else             { state.properties = state.properties.filter(x => x !== pid); }
+            updatePropCount();
+          });
+        });
+        updatePropCount();
+      }
+      function updatePropCount() {
+        propCount.textContent = state.properties.length + " of " + PROPS.length + " selected";
+      }
+      $$("[data-bulk]").forEach(b => b.addEventListener("click", () => {
+        state.properties = b.dataset.bulk === "all" ? PROPS.map(p => p.id) : [];
+        renderProps();
+      }));
+      renderProps();
+
+      // Submit (Step 2 → 3)
+      $("#signupForm").addEventListener("submit", e => {
+        e.preventDefault();
+        if (state.step !== 2) return;
+        clearErr2();
+        if (state.properties.length === 0) {
+          showErr(errorBox2, "Select at least one property — or pick Admin/GM to request all.");
+          return;
+        }
+        if (!terms.checked) {
+          showErr(errorBox2, "Please accept the Terms of Service and Privacy Policy.");
+          return;
+        }
+
+        const btn = $("#createBtn");
+        const lbl = $("#createLabel");
+        btn.disabled = true;
+        let dots = 0;
+        const timer = setInterval(() => {
+          dots = (dots + 1) % 4;
+          lbl.textContent = "Creating account" + ".".repeat(dots);
+        }, 250);
+
+        setTimeout(() => {
+          clearInterval(timer);
+          btn.disabled = false;
+          lbl.textContent = "Create account";
+
+          const roleLabel = ({ ops: "Operations", finance: "Finance", gm: "General Manager", admin: "Admin" })[state.role];
+          const propLabel = state.properties.length === PROPS.length
+            ? "All properties"
+            : state.properties.length + " selected (" + state.properties.join(", ") + ")";
+
+          $("#doneEmail").textContent = state.email;
+          $("#doneSummary").innerHTML = `
+            <dt>Name</dt><dd>${state.firstName} ${state.lastName}</dd>
+            <dt>Email</dt><dd>${state.email}</dd>
+            <dt>Role</dt><dd>${roleLabel}</dd>
+            <dt>Properties</dt><dd>${propLabel}</dd>
+          `;
+
+          localStorage.setItem("tap.email", state.email);
+          setStep(3);
+        }, 1100);
+      });
+
+      $("#goDashboard").addEventListener("click", () => {
+        window.location.href = "/dashboard/";
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -38,6 +38,8 @@ from occupancy.target_store import TargetStore
 
 _ROUTES = [
     ("GET",  r"^/$",                                  "dashboard"),
+    ("GET",  r"^/login$",                             "login"),
+    ("GET",  r"^/signup$",                            "signup"),
     ("GET",  r"^/dashboard/?$",                       "dashboard"),
     ("GET",  r"^/dashboard/(.+)$",                    "dashboard_static"),
     ("GET",  r"^/api/occupancy/summary$",             "summary"),
@@ -130,6 +132,20 @@ def _build_handler(cfg: OccupancyConfig, fixtures_path: str | None) -> type:
 
             if name == "healthz":
                 self._send(200, {"Content-Type": "application/json"}, b'{"status":"ok"}')
+                return
+
+            if name == "login":
+                self.send_response(301)
+                self.send_header("Location", "/dashboard/login.html")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+
+            if name == "signup":
+                self.send_response(301)
+                self.send_header("Location", "/dashboard/signup.html")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
                 return
 
             if name == "dashboard":
