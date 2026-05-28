@@ -365,52 +365,78 @@ tr.prop-row:hover{background:#f7faff}
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
-// ── MOCK DATA (TODO: swap to real API when backend is ready)
-// Unblock: GET /api/occupancy/* — sibling child issue under THE-1904
-
-const SUMMARY = {
-  finance:{rate:94.2,available:248,occupied:218,vacant:22,mom:+2.3,ins:14,outs:8,below:2},
-  ops:    {rate:87.6,available:248,occupied:201,vacant:39,mom:+1.8,ins:14,outs:8,below:3}
+// ── LIVE DATA (fetched from /api/occupancy/*)
+let SUMMARY = {
+  finance:{rate:0,available:0,occupied:0,vacant:0,mom:0,ins:0,outs:0,below:0},
+  ops:    {rate:0,available:0,occupied:0,vacant:0,mom:0,ins:0,outs:0,below:0}
 };
+let DAILY = [];
+let PROPS = [];
+let UNITS = {};
+let DQ    = [];
 
-const DAILY = Array.from({length:27},(_,i)=>({
-  date:`2026-05-${String(i+1).padStart(2,'0')}`,
-  rate: Math.round(83 + Math.sin(i*0.45)*4.5 + (i%3)*1.2)
-}));
+async function apiFetch(path){
+  const r=await fetch(path);
+  if(!r.ok) throw new Error(`API ${path} → ${r.status}`);
+  return r.json();
+}
 
-const PROPS = [
-  {id:'p1',name:'Sunset Gardens',     region:'North',   type:'Co-living', avail:48,occ:46,vac:1,res:1,mnt:0,fin:97.9,ops:93.1,ins:3,outs:1,upd:'2026-05-27',tgt:90},
-  {id:'p2',name:'The Hive @ Orchard', region:'Central', type:'Co-living', avail:64,occ:61,vac:2,res:1,mnt:0,fin:95.3,ops:89.4,ins:5,outs:3,upd:'2026-05-26',tgt:92},
-  {id:'p3',name:'Marina Bay Res.',    region:'Central', type:'Serviced',  avail:36,occ:28,vac:5,res:2,mnt:1,fin:83.3,ops:78.6,ins:2,outs:4,upd:'2026-05-27',tgt:90},
-  {id:'p4',name:'Eastwood Living',    region:'East',    type:'Co-living', avail:42,occ:40,vac:2,res:0,mnt:0,fin:95.2,ops:91.7,ins:2,outs:2,upd:'2026-05-25',tgt:88},
-  {id:'p5',name:'NorthStar Suites',   region:'North',   type:'Student',   avail:58,occ:43,vac:11,res:3,mnt:1,fin:79.3,ops:73.8,ins:2,outs:2,upd:'2026-05-24',tgt:90},
-];
+function _mapSummary(d){
+  return{
+    rate:   +(d.overallRate      ?? 0),
+    available: d.totalAvailable  ?? 0,
+    occupied:  d.totalOccupied   ?? 0,
+    vacant:    d.totalVacant     ?? 0,
+    mom:    +(d.momChange        ?? 0),
+    ins:       d.moveIns         ?? 0,
+    outs:      d.moveOuts        ?? 0,
+    below:     d.belowTargetCount?? 0,
+  };
+}
 
-const UNITS = {
-  p1:[
-    {id:'SG-101',tenant:'Alice Tan',  ls:'2026-01-01',le:'2026-12-31',mi:'2026-01-01',mo:null,  status:'Occupied',  dv:0, na:'2027-01-01',notes:'',crm:'#sg-101'},
-    {id:'SG-102',tenant:'Bob Lim',    ls:'2026-02-01',le:'2026-07-31',mi:'2026-02-01',mo:null,  status:'Occupied',  dv:0, na:'2026-08-01',notes:'Renewal needed',crm:'#sg-102'},
-    {id:'SG-103',tenant:'—',          ls:null,        le:null,        mi:null,        mo:'2026-05-01',status:'Vacant',dv:26,na:'2026-05-27',notes:'Deep clean due',crm:'#sg-103'},
-    {id:'SG-201',tenant:'Carol Wu',   ls:'2026-03-15',le:'2026-09-14',mi:'2026-03-15',mo:null,  status:'Occupied',  dv:0, na:'2026-09-15',notes:'',crm:'#sg-201'},
-    {id:'SG-202',tenant:'David Ng',   ls:'2026-05-01',le:'2026-10-31',mi:'2026-05-01',mo:null,  status:'Reserved',  dv:0, na:'2026-11-01',notes:'Key handover pending',crm:'#sg-202'},
-  ],
-  p2:[
-    {id:'HV-A01',tenant:'Emma Zhang', ls:'2025-11-01',le:'2026-10-31',mi:'2025-11-01',mo:null,  status:'Occupied',  dv:0, na:'2026-11-01',notes:'',crm:'#hv-a01'},
-    {id:'HV-A02',tenant:'Frank Koh',  ls:'2026-01-15',le:'2026-07-14',mi:'2026-01-15',mo:null,  status:'Occupied',  dv:0, na:'2026-07-15',notes:'Renewal discuss',crm:'#hv-a02'},
-    {id:'HV-B01',tenant:'—',          ls:null,        le:null,        mi:null,        mo:'2026-05-10',status:'Vacant',dv:17,na:'2026-05-27',notes:'Listed on platform',crm:'#hv-b01'},
-  ],
-  p3:[
-    {id:'MB-101',tenant:'Grace Lim',  ls:'2026-02-01',le:'2026-08-31',mi:'2026-02-01',mo:null,  status:'Occupied',  dv:0, na:'2026-09-01',notes:'',crm:'#mb-101'},
-    {id:'MB-301',tenant:'Henry Lee',  ls:'2026-03-01',le:null,        mi:'2026-03-01',mo:null,  status:'Occupied',  dv:0, na:'—',          notes:'Missing lease end',crm:'#mb-301'},
-  ],
-};
+function _mapProp(p){
+  return{
+    id:    String(p.propertyId),
+    name:  p.propertyName,
+    region:p.region       || '—',
+    type:  p.propertyType || '—',
+    avail: p.available    ?? 0,
+    occ:0, vac:0, res:0, mnt:0,
+    fin:   +((p.financeRate ?? 0).toFixed(1)),
+    ops:   +((p.opsRate     ?? 0).toFixed(1)),
+    ins:   p.moveIns      ?? 0,
+    outs:  p.moveOuts     ?? 0,
+    upd:   (p.lastUpdated || '').slice(0,10),
+    tgt:   p.targetRate   ?? 85,
+  };
+}
 
-const DQ = [
-  {prop:'p3',pname:'Marina Bay Res.',unit:'MB-301',issue:'Missing lease end date',   sev:'warn'},
-  {prop:'p3',pname:'Marina Bay Res.',unit:'MB-115',issue:'Move-out without lease end',sev:'warn'},
-  {prop:'p5',pname:'NorthStar Suites',unit:'NS-204',issue:'Tenant name missing in CRM',sev:'err'},
-  {prop:'p5',pname:'NorthStar Suites',unit:'NS-B12',issue:'Vacant >30 days, no listing',sev:'err'},
-];
+function _mapDQ(d){
+  const ERR_TYPES=['vacant_long','missing_tenant'];
+  return{
+    prop:  String(d.propertyId),
+    pname: d.propertyName,
+    unit:  d.entityName || String(d.entityId),
+    issue: d.detail,
+    sev:   ERR_TYPES.includes(d.type)?'err':'warn',
+  };
+}
+
+async function fetchAll(){
+  const m=S.month||new Date().toISOString().slice(0,7);
+  const[sumFin,sumOps,propsData,dqData,dailyData]=await Promise.all([
+    apiFetch(`/api/occupancy/summary?viewType=finance&month=${m}`),
+    apiFetch(`/api/occupancy/summary?viewType=ops&month=${m}`),
+    apiFetch(`/api/occupancy/properties?viewType=finance&month=${m}`),
+    apiFetch(`/api/occupancy/data-quality`),
+    apiFetch(`/api/occupancy/daily?month=${m}`),
+  ]);
+  SUMMARY={finance:_mapSummary(sumFin),ops:_mapSummary(sumOps)};
+  PROPS=(propsData.properties||[]).map(_mapProp);
+  DQ=(dqData.issues||[]).map(_mapDQ);
+  DAILY=(dailyData.series||[]).map(s=>({date:s.date,rate:+((s.rate??0).toFixed(1))}));
+  UNITS={};
+}
 
 // ── STATE
 const S = {
@@ -422,9 +448,15 @@ const S = {
 // ── BOOT
 async function boot(){
   show('load');
+  // Init month picker to current month
+  const nowM=new Date().toISOString().slice(0,7);
+  const fMonth=document.getElementById('f-month');
+  if(fMonth&&!fMonth.value) fMonth.value=nowM;
+  S.month=fMonth?.value||nowM;
+
   try{
-    await delay(500);
     loadLS();
+    await fetchAll();
     renderAll();
     show('dash');
     document.getElementById('last-upd').textContent =
@@ -471,12 +503,18 @@ function filteredProps(){
   });
 }
 
-function onFilter(){
+async function onFilter(){
+  const prevMonth=S.month;
   S.month  = document.getElementById('f-month').value;
   S.prop   = document.getElementById('f-prop').value;
   S.type   = document.getElementById('f-type').value;
   S.region = document.getElementById('f-region').value;
   S.status = document.getElementById('f-status').value;
+  if(S.month!==prevMonth){
+    show('load');
+    try{await fetchAll();}catch(e){console.error(e);}
+    show('dash');
+  }
   renderAll();
 }
 

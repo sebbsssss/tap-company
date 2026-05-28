@@ -37,6 +37,8 @@ from occupancy.target_store import TargetStore
 
 
 _ROUTES = [
+    ("GET",  r"^/$",                                  "dashboard"),
+    ("GET",  r"^/dashboard$",                         "dashboard"),
     ("GET",  r"^/api/occupancy/summary$",             "summary"),
     ("GET",  r"^/api/occupancy/daily$",               "daily"),
     ("GET",  r"^/api/occupancy/properties$",          "properties"),
@@ -48,6 +50,8 @@ _ROUTES = [
     ("PUT",  r"^/api/occupancy/settings/target$",     "put_targets"),
     ("GET",  r"^/healthz$",                           "healthz"),
 ]
+
+_DASHBOARD_HTML = Path(__file__).parent.parent / "occupancy-dashboard.html"
 
 _COMPILED = [(m, re.compile(pat), name) for m, pat, name in _ROUTES]
 
@@ -109,6 +113,14 @@ def _build_handler(cfg: OccupancyConfig, fixtures_path: str | None) -> type:
 
             if name == "healthz":
                 self._send(200, {"Content-Type": "application/json"}, b'{"status":"ok"}')
+                return
+
+            if name == "dashboard":
+                if _DASHBOARD_HTML.exists():
+                    body = _DASHBOARD_HTML.read_bytes()
+                    self._send(200, {"Content-Type": "text/html; charset=utf-8"}, body)
+                else:
+                    self._json_error("Dashboard not found", 404)
                 return
 
             try:
