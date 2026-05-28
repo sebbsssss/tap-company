@@ -1,57 +1,1084 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TAP — Co-Living Occupancy</title>
-  <link rel="stylesheet" href="/dashboard/styles.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TAP — Co-Living Occupancy</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;height:100%}
+:root{
+  --bg-0:#FBFAF6;--bg-1:#F6F5EF;--bg-2:#EEEDE5;--card:#fff;
+  --ink-1:#0E0E0C;--ink-2:#2E2E2A;--ink-3:#5C5C56;--ink-4:#8A8A82;--ink-5:#B8B7AE;
+  --line:rgba(20,18,12,.07);--line-s:rgba(20,18,12,.14);--line-c:rgba(20,18,12,.28);
+  --occ:#2F7D5B;--vac:#B0641E;--res:#4A5BB4;--mnt:#8A8A82;
+  --danger:#B83A2B;--warn:#C77A0F;--good:#2F7D5B;
+  --f:ui-sans-serif,system-ui,-apple-system,"Helvetica Neue",sans-serif;
+  --fm:ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+  --r:4px;--dur:120ms;--ring:0 0 0 3px rgba(14,14,12,.14);
+}
+body{font-family:var(--f);font-size:14px;line-height:1.5;background:var(--bg-0);color:var(--ink-1);-webkit-font-smoothing:antialiased}
+button{font-family:inherit}::selection{background:var(--ink-1);color:var(--bg-0)}
+
+/* Shell */
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+
+/* Sidebar */
+.sb{background:var(--bg-1);border-right:1px solid var(--line);padding:22px 0 14px;
+    display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sb-brand{padding:0 20px 22px;display:flex;align-items:baseline;gap:8px}
+.brand-wm{font-family:var(--fm);font-size:16px;font-weight:800;letter-spacing:.32em;text-transform:uppercase}
+.brand-badge{font-family:var(--fm);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+             color:var(--ink-3);border:1px solid var(--line-s);padding:2px 6px;border-radius:2px}
+.sb-sec{font-family:var(--fm);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+        color:var(--ink-4);padding:14px 20px 6px}
+.sb-nav{padding:0 8px;flex:1;display:flex;flex-direction:column;gap:1px}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;color:var(--ink-3);font-family:var(--fm);
+    font-size:12px;border-radius:2px;cursor:pointer;background:transparent;border:0;text-align:left;
+    width:100%;transition:background var(--dur),color var(--dur)}
+.ni:hover{background:rgba(0,0,0,.035);color:var(--ink-1)}
+.ni.on{background:rgba(0,0,0,.07);color:var(--ink-1);font-weight:600}
+.ni-ic{width:16px;text-align:center;opacity:.55}.ni.on .ni-ic,.ni:hover .ni-ic{opacity:1}
+.ni-ct{margin-left:auto;font-size:10px;color:var(--ink-4);font-variant-numeric:tabular-nums}
+.sb-foot{padding:12px 20px;border-top:1px solid var(--line);font-family:var(--fm);font-size:10px;color:var(--ink-4)}
+.sb-foot strong{color:var(--ink-2)}
+
+/* Main */
+.main{padding:28px 32px 64px;min-width:0}
+
+/* Page header */
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px;flex-wrap:wrap}
+.ph-l{display:flex;flex-direction:column;gap:8px}
+.eyebrow{font-family:var(--fm);font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-4)}
+.h1{font-size:26px;font-weight:700;letter-spacing:-.018em;line-height:1.1;margin:0;color:var(--ink-1)}
+.ph-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* Buttons */
+.btn{font-family:var(--fm);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+     padding:8px 14px;border-radius:var(--r);border:1px solid transparent;cursor:pointer;
+     display:inline-flex;align-items:center;gap:6px;
+     transition:background var(--dur),color var(--dur),border-color var(--dur);white-space:nowrap}
+.btn:focus-visible{outline:none;box-shadow:var(--ring)}
+.btn-p{background:var(--ink-1);color:var(--bg-0);border-color:var(--ink-1)}
+.btn-p:hover{background:transparent;color:var(--ink-1)}
+.btn-g{background:transparent;color:var(--ink-2);border-color:var(--line-s)}
+.btn-g:hover{color:var(--ink-1);border-color:var(--line-c);background:var(--bg-1)}
+.btn-sm{padding:6px 10px;font-size:10px}.btn-xs{padding:3px 7px;font-size:9px}
+
+/* Segmented control */
+.seg{display:inline-flex;border:1px solid var(--line-s);border-radius:var(--r);padding:2px;background:var(--bg-1)}
+.sb2{font-family:var(--fm);font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+     padding:6px 12px;background:transparent;color:var(--ink-3);border:0;border-radius:2px;cursor:pointer;
+     transition:background var(--dur),color var(--dur)}
+.sb2.on{background:var(--card);color:var(--ink-1);box-shadow:0 0 0 1px var(--line-s)}
+.sb2:hover:not(.on){color:var(--ink-1)}.sb2:focus-visible{outline:none;box-shadow:var(--ring)}
+
+/* Filter bar */
+.fb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 14px;
+    border:1px solid var(--line);background:var(--card);border-radius:var(--r);margin-bottom:18px}
+.fb-g{display:flex;align-items:center;gap:6px}
+.fb-lbl{font-family:var(--fm);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-4);font-weight:700}
+.fb-sep{width:1px;height:18px;background:var(--line);margin:0 2px;flex-shrink:0}
+.sel{background:var(--card);border:1px solid var(--line-s);border-radius:var(--r);padding:7px 26px 7px 10px;
+     font-family:var(--fm);font-size:11px;color:var(--ink-1);appearance:none;cursor:pointer;
+     background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(-45deg,transparent 50%,var(--ink-3) 50%);
+     background-position:calc(100% - 13px) 50%,calc(100% - 8px) 50%;background-size:5px 5px;
+     background-repeat:no-repeat;min-height:30px;transition:border-color var(--dur)}
+.sel:focus{outline:none;border-color:var(--line-c);box-shadow:var(--ring)}
+input[type=month]{font-family:var(--fm);font-size:11px;padding:7px 10px;
+                  border:1px solid var(--line-s);border-radius:var(--r);background:var(--card);
+                  color:var(--ink-1);min-height:30px;outline:none}
+input[type=month]:focus{border-color:var(--line-c);box-shadow:var(--ring)}
+.fb-rst{background:transparent;border:0;font-family:var(--fm);font-size:10px;letter-spacing:.14em;
+        text-transform:uppercase;color:var(--ink-3);cursor:pointer;padding:6px 8px;border-radius:var(--r);margin-left:auto}
+.fb-rst:hover{color:var(--ink-1);background:var(--bg-1)}
+
+/* View toggle */
+.vt{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.vt-lbl{font-family:var(--fm);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.vdef{font-family:var(--fm);font-size:11px;color:var(--ink-3);background:var(--bg-1);
+      border:1px solid var(--line);border-radius:var(--r);padding:5px 10px}
+.vdef strong{color:var(--ink-1)}
+
+/* KPI grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+          border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:18px}
+.kpi{background:var(--card);padding:18px;display:flex;flex-direction:column;gap:6px;min-height:96px}
+.kpi.click{cursor:pointer}
+.kpi.click:hover{background:var(--bg-1)}
+.kpi-lbl{font-family:var(--fm);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-4)}
+.kpi-val{font-family:var(--fm);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;color:var(--ink-1)}
+.kpi-sub{font-family:var(--fm);font-size:10px;color:var(--ink-3);margin-top:auto;font-variant-numeric:tabular-nums}
+.good{color:var(--good)}.bad{color:var(--danger)}.wrn{color:var(--warn)}
+
+/* Panel */
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:18px}
+.phd{display:flex;align-items:center;justify-content:space-between;gap:12px;
+     padding:12px 16px;border-bottom:1px solid var(--line)}
+.pttl{font-size:13px;font-weight:600;color:var(--ink-1);display:flex;align-items:center;gap:8px}
+.psub{font-family:var(--fm);font-size:10px;color:var(--ink-4);margin-top:3px}
+.pbd{padding:16px}.flush{padding:0;overflow-x:auto}
+
+/* Chart layout */
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+.fw{grid-column:1/-1}
+canvas{display:block;width:100%!important}
+
+/* Calendar heatmap */
+.cal{padding:12px}
+.cal-drow{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-dh{font-family:var(--fm);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+        color:var(--ink-4);text-align:center;padding-bottom:4px}
+.cal-cell{border-radius:2px;border:1px solid rgba(255,255,255,.1);padding:5px;display:flex;
+          flex-direction:column;justify-content:space-between;aspect-ratio:1.8/1;cursor:default;transition:opacity .1s}
+.cal-cell:hover{opacity:.85}
+.cal-dn{font-family:var(--fm);font-size:9px;font-weight:600}
+.cal-pct{font-family:var(--fm);font-size:10px;font-weight:700;align-self:flex-end;font-variant-numeric:tabular-nums}
+.cal-lgd{display:flex;gap:12px;padding:4px 12px 10px;flex-wrap:wrap}
+.cal-li{display:flex;align-items:center;gap:5px;font-family:var(--fm);font-size:9px;color:var(--ink-3)}
+.cal-sq{width:9px;height:9px;border-radius:1px;flex-shrink:0}
+
+/* Table */
+.dt{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+.dt thead th{position:sticky;top:0;background:var(--bg-1);font-family:var(--fm);font-size:9.5px;
+             font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+             padding:9px 12px;text-align:left;border-bottom:1px solid var(--line-s);
+             white-space:nowrap;z-index:1;cursor:pointer;user-select:none}
+.dt thead th:hover,.dt thead th.sk{color:var(--ink-1)}
+.dt thead th.num{text-align:right}
+.dt tbody td{padding:11px 12px;border-bottom:1px solid var(--line);color:var(--ink-1);vertical-align:middle}
+.dt tbody td.num{text-align:right;font-family:var(--fm);font-variant-numeric:tabular-nums}
+.dt tbody tr:last-child td{border-bottom:0}
+.dt tbody tr{cursor:pointer;transition:background var(--dur)}
+.dt tbody tr:hover{background:var(--bg-1)}
+.dt-pri{font-weight:600}.dt-sub{font-family:var(--fm);font-size:10px;color:var(--ink-4)}
+.pct-wrap{display:inline-flex;align-items:center;gap:7px;font-family:var(--fm);font-variant-numeric:tabular-nums}
+.pct-bar{width:52px;height:4px;background:var(--bg-2);border-radius:2px;position:relative;overflow:hidden;flex-shrink:0}
+.pct-bar>i{position:absolute;inset:0 auto 0 0;border-radius:2px}
+
+/* Tags */
+.tag{display:inline-flex;align-items:center;font-family:var(--fm);font-size:10px;font-weight:600;
+     letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:2px;border:1px solid transparent}
+.tg{color:var(--good);background:rgba(47,125,91,.10);border-color:rgba(47,125,91,.20)}
+.tw{color:var(--warn);background:rgba(199,122,15,.10);border-color:rgba(199,122,15,.20)}
+.tb{color:var(--danger);background:rgba(184,58,43,.10);border-color:rgba(184,58,43,.20)}
+.tr{color:var(--res);background:rgba(74,91,180,.10);border-color:rgba(74,91,180,.20)}
+.tm{color:var(--ink-3);background:rgba(138,138,130,.10);border-color:var(--line-s)}
+
+/* Insights */
+.ins-list{display:flex;flex-direction:column}
+.ins-item{display:grid;grid-template-columns:4px 1fr auto;gap:10px;
+          padding:11px 16px 11px 12px;border-bottom:1px solid var(--line);align-items:flex-start}
+.ins-item:last-child{border-bottom:0}
+.ins-rail{align-self:stretch;border-radius:2px;background:var(--ink-5)}
+.ins-item.bad .ins-rail{background:var(--danger)}.ins-item.wrn .ins-rail{background:var(--warn)}.ins-item.inf .ins-rail{background:var(--res)}
+.ins-ttl{font-size:13px;font-weight:600;line-height:1.3;margin-bottom:2px}
+.ins-det{font-family:var(--fm);font-size:11px;color:var(--ink-3)}
+.ins-ct{font-family:var(--fm);font-size:11px;font-weight:700;color:var(--ink-2);
+        background:var(--bg-1);border:1px solid var(--line-s);padding:2px 8px;border-radius:2px;
+        font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* DQ badge */
+.dq-badge{font-family:var(--fm);font-size:10px;font-weight:700;padding:2px 8px;border-radius:2px}
+.dq-badge.bad{background:rgba(184,58,43,.10);color:var(--danger);border:1px solid rgba(184,58,43,.2)}
+.dq-badge.wrn{background:rgba(199,122,15,.10);color:var(--warn);border:1px solid rgba(199,122,15,.2)}
+
+/* Slide-over */
+.scrim{position:fixed;inset:0;background:rgba(14,14,12,.2);backdrop-filter:blur(2px);z-index:50;
+       opacity:0;pointer-events:none;transition:opacity .18s}
+.scrim.open{opacity:1;pointer-events:auto}
+.so{position:fixed;top:0;right:0;bottom:0;width:700px;max-width:96vw;background:var(--bg-0);
+    border-left:1px solid var(--line-s);box-shadow:-16px 0 40px rgba(0,0,0,.10);z-index:51;
+    transform:translateX(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);
+    display:flex;flex-direction:column}
+.so.open{transform:translateX(0)}
+.so-hd{padding:18px 22px;border-bottom:1px solid var(--line);
+       display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-shrink:0}
+.so-body{flex:1;overflow-y:auto;padding:16px 22px 24px}
+.so-close{background:transparent;border:1px solid var(--line-s);width:28px;height:28px;
+          border-radius:var(--r);cursor:pointer;color:var(--ink-3);font-size:13px;
+          display:flex;align-items:center;justify-content:center}
+.so-close:hover{color:var(--ink-1);border-color:var(--line-c)}
+
+/* Settings form */
+.s-grid{display:grid;grid-template-columns:240px 1fr;gap:24px}
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.fg label{font-family:var(--fm);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.fg input{padding:8px 10px;border:1px solid var(--line-s);border-radius:var(--r);
+          font-family:var(--fm);font-size:13px;color:var(--ink-1);outline:none;background:var(--card)}
+.fg input:focus{border-color:var(--line-c);box-shadow:var(--ring)}
+.ovr-row{display:flex;align-items:center;gap:8px;font-family:var(--fm);font-size:11px;
+         padding:6px 0;border-bottom:1px solid var(--line)}
+.ovr-row:last-child{border-bottom:0}
+.ovr-row span{flex:1;color:var(--ink-2)}
+.ovr-row input{width:80px;padding:5px 8px;border:1px solid var(--line-s);border-radius:var(--r);
+               font-family:var(--fm);font-size:11px;outline:none;text-align:right;background:var(--card)}
+.ovr-row input:focus{border-color:var(--line-c);box-shadow:var(--ring)}
+
+/* Dropdown */
+.dd{position:relative}
+.dd-menu{display:none;position:absolute;top:calc(100% + 4px);right:0;min-width:190px;background:var(--card);
+         border:1px solid var(--line-s);border-radius:var(--r);box-shadow:0 8px 28px rgba(0,0,0,.10);padding:4px;z-index:20}
+.dd-menu.open{display:block}
+.dd-item{display:block;width:100%;text-align:left;padding:8px 10px;font-family:var(--fm);font-size:11px;
+         color:var(--ink-1);cursor:pointer;border:0;background:transparent;border-radius:2px}
+.dd-item:hover{background:var(--bg-1)}
+
+/* States */
+.st{padding:48px 20px;text-align:center;color:var(--ink-3);font-family:var(--fm);font-size:12px}
+.st.err{color:var(--danger)}
+.spin{width:20px;height:20px;border:2px solid var(--line);border-top-color:var(--ink-1);
+      border-radius:50%;animation:sp .6s linear infinite;margin:0 auto 10px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{padding:28px 16px;text-align:center;color:var(--ink-3);font-family:var(--fm);font-size:12px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink-1);
+       color:var(--bg-0);font-family:var(--fm);font-size:11px;letter-spacing:.06em;
+       padding:8px 14px;border-radius:var(--r);z-index:100;opacity:0;pointer-events:none;
+       transition:opacity .18s,transform .18s}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+
+/* Responsive */
+@media(max-width:1100px){
+  .app{grid-template-columns:1fr}.sb{display:none}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .chart-row{grid-template-columns:1fr}.fw{grid-column:1}
+  .s-grid{grid-template-columns:1fr}
+}
+@media(max-width:600px){.main{padding:16px 16px 48px}}
+</style>
 </head>
 <body>
-  <!-- Loading overlay — hidden once TAP_DATA_READY resolves -->
-  <div id="tap-loading" style="
-    position:fixed;inset:0;background:#FBFAF6;display:flex;align-items:center;
-    justify-content:center;z-index:9999;flex-direction:column;gap:12px;
-    font-family:ui-monospace,monospace;font-size:12px;color:#8A8A82;
-    letter-spacing:0.14em;text-transform:uppercase;">
-    <div>Loading occupancy data…</div>
+<div class="app">
+
+<!-- SIDEBAR -->
+<aside class="sb" role="complementary" aria-label="Navigation">
+  <div class="sb-brand">
+    <span class="brand-wm">TAP</span>
+    <span class="brand-badge">Occupancy</span>
+  </div>
+  <div class="sb-sec">Co-Living</div>
+  <nav class="sb-nav" aria-label="Dashboard navigation">
+    <button class="ni on" data-route="overview" onclick="go('overview')">
+      <span class="ni-ic" aria-hidden="true">◉</span><span>Overview</span>
+    </button>
+    <button class="ni" data-route="properties" onclick="go('properties')">
+      <span class="ni-ic" aria-hidden="true">▤</span><span>Properties</span>
+    </button>
+    <button class="ni" data-route="insights" onclick="go('insights')">
+      <span class="ni-ic" aria-hidden="true">◇</span><span>Insights</span>
+      <span class="ni-ct" id="sb-cnt" aria-hidden="true"></span>
+    </button>
+    <button class="ni" data-route="settings" onclick="go('settings')">
+      <span class="ni-ic" aria-hidden="true">⚙</span><span>Settings</span>
+    </button>
+  </nav>
+  <div class="sb-foot">
+    <div><strong>Source</strong> · Zoho CRM</div>
+    <div id="sb-upd" style="margin-top:2px">—</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main" id="main" role="main">
+
+  <div class="st" id="st-load" role="status" aria-live="polite">
+    <div class="spin" aria-hidden="true"></div>Loading occupancy data…
+  </div>
+  <div class="st err" id="st-err" style="display:none" role="alert">
+    <strong>Failed to load data.</strong>
+    <p style="margin-top:10px"><button class="btn btn-g" onclick="boot()">Retry</button></p>
   </div>
 
-  <div id="root"></div>
+  <div id="dash" style="display:none">
 
-  <script>
-    // Suppress noisy Recharts deprecation warnings (defaultProps on function components).
-    (function () {
-      const origError = console.error;
-      console.error = function (...args) {
-        const msg = args && args[0];
-        if (typeof msg === 'string' && msg.includes('Support for defaultProps will be removed')) return;
-        return origError.apply(console, args);
-      };
-    })();
-  </script>
+    <!-- ──── OVERVIEW ──── -->
+    <section id="r-overview">
+      <div class="ph">
+        <div class="ph-l">
+          <span class="eyebrow">Co-Living</span>
+          <h1 class="h1">Occupancy Overview</h1>
+        </div>
+        <div class="ph-r">
+          <span style="font-family:var(--fm);font-size:10px;color:var(--ink-4)" id="ph-upd"></span>
+          <div class="dd" id="exp-dd">
+            <button class="btn btn-g btn-sm" onclick="toggleDD()" aria-haspopup="true" aria-label="Export options">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+              Export
+            </button>
+            <div class="dd-menu" id="exp-menu" role="menu">
+              <button class="dd-item" role="menuitem" onclick="exportCSV('property');toggleDD()">Property CSV</button>
+              <button class="dd-item" role="menuitem" onclick="exportCSV('finance');toggleDD()">Finance Report CSV</button>
+              <button class="dd-item" role="menuitem" onclick="exportCSV('ops');toggleDD()">Ops Report CSV</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-  <!-- React + Babel -->
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+      <!-- Filters -->
+      <nav class="fb" aria-label="Dashboard filters">
+        <div class="fb-g"><span class="fb-lbl">Month</span><input type="month" id="f-month" aria-label="Month"/></div>
+        <div class="fb-sep" aria-hidden="true"></div>
+        <div class="fb-g"><span class="fb-lbl">Property</span>
+          <select class="sel" id="f-prop" aria-label="Property"><option value="">All Properties</option></select>
+        </div>
+        <div class="fb-g"><span class="fb-lbl">Type</span>
+          <select class="sel" id="f-type" aria-label="Property type">
+            <option value="">All</option><option value="co-living">Co-living</option>
+            <option value="serviced">Serviced</option><option value="student">Student</option>
+          </select>
+        </div>
+        <div class="fb-g"><span class="fb-lbl">Region</span>
+          <select class="sel" id="f-region" aria-label="Region">
+            <option value="">All</option><option>North</option><option>South</option>
+            <option>East</option><option>West</option><option>Central</option>
+          </select>
+        </div>
+        <div class="fb-g"><span class="fb-lbl">Status</span>
+          <select class="sel" id="f-status" aria-label="Status">
+            <option value="">All</option><option>Occupied</option><option>Vacant</option>
+            <option>Reserved</option><option>Maintenance</option>
+          </select>
+        </div>
+        <button class="fb-rst" onclick="resetFilters()">Reset</button>
+      </nav>
 
-  <!-- Recharts -->
-  <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
-  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+      <!-- View toggle -->
+      <div class="vt" role="group" aria-label="View mode">
+        <span class="vt-lbl">View:</span>
+        <div class="seg">
+          <button class="sb2 on" id="btn-fin" onclick="setView('finance')" aria-pressed="true">Finance</button>
+          <button class="sb2" id="btn-ops" onclick="setView('ops')" aria-pressed="false">Operations</button>
+        </div>
+        <div class="vdef" id="vdef" role="status" aria-live="polite">
+          <strong>Finance:</strong> Occupied at any point in the month
+        </div>
+      </div>
 
-  <!-- Live data layer (sets window.TAP_DATA_READY promise) -->
-  <script src="/dashboard/src/data.js"></script>
+      <!-- KPIs -->
+      <section aria-label="Key metrics">
+        <div class="kpi-grid" id="kpi-grid" role="list"></div>
+      </section>
 
-  <!-- Tweaks shell -->
-  <script type="text/babel" src="/dashboard/tweaks-panel.jsx" data-presets="react"></script>
+      <!-- Insights banner (compact) -->
+      <div id="ov-ins"></div>
 
-  <!-- App scripts (order matters — atoms → charts → blocks → screens → app) -->
-  <script type="text/babel" src="/dashboard/src/atoms.jsx" data-presets="react"></script>
-  <script type="text/babel" src="/dashboard/src/charts.jsx" data-presets="react"></script>
-  <script type="text/babel" src="/dashboard/src/filterbar.jsx" data-presets="react"></script>
-  <script type="text/babel" src="/dashboard/src/insights.jsx" data-presets="react"></script>
-  <script type="text/babel" src="/dashboard/src/drilldown.jsx" data-presets="react"></script>
-  <script type="text/babel" src="/dashboard/src/screens.jsx" data-presets="react"></script>
-  <script type="text/babel" src="/dashboard/src/app.jsx" data-presets="react"></script>
+      <!-- Charts -->
+      <section aria-label="Charts">
+        <div class="chart-row">
+          <div class="panel" id="line-panel">
+            <div class="phd">
+              <div><div class="pttl">Daily Occupancy Trend</div><div class="psub">Operations view — avg daily rate</div></div>
+              <div id="line-meta" style="font-family:var(--fm);font-size:10px;color:var(--ink-3);display:flex;gap:12px;flex-wrap:wrap"></div>
+            </div>
+            <div class="pbd" style="padding-top:12px">
+              <canvas id="c-line" style="height:190px" aria-label="Daily occupancy line chart"></canvas>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="phd"><div><div class="pttl">Occupancy by Property</div><div class="psub">Finance % vs Ops %</div></div></div>
+            <div class="pbd" style="padding-top:12px">
+              <canvas id="c-bar" style="height:190px" aria-label="Property occupancy bar chart"></canvas>
+            </div>
+          </div>
+          <div class="panel fw">
+            <div class="phd"><div><div class="pttl">Calendar Heatmap</div><div class="psub">Daily occupancy — colour intensity = level</div></div></div>
+            <div class="cal" id="cal" aria-label="Calendar heatmap"></div>
+            <div class="cal-lgd" id="cal-lgd"></div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ──── PROPERTIES ──── -->
+    <section id="r-properties" style="display:none">
+      <div class="ph">
+        <div class="ph-l"><span class="eyebrow">Co-Living</span><h1 class="h1">Properties</h1></div>
+        <div class="ph-r"><button class="btn btn-g btn-sm" onclick="exportCSV('property')">Property CSV</button></div>
+      </div>
+      <div class="panel">
+        <div class="phd"><div class="pttl" id="prop-ttl">Properties</div></div>
+        <div class="flush">
+          <table class="dt" aria-label="Property occupancy">
+            <thead id="prop-thead"></thead>
+            <tbody id="prop-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──── INSIGHTS ──── -->
+    <section id="r-insights" style="display:none">
+      <div class="ph"><div class="ph-l"><span class="eyebrow">Co-Living</span><h1 class="h1">Insights &amp; Data Quality</h1></div></div>
+      <div class="panel">
+        <div class="phd">
+          <div class="pttl">Actionable Insights <span class="dq-badge bad" id="ins-badge"></span></div>
+        </div>
+        <div class="ins-list" id="ins-list"><div class="empty">No insights — all metrics within target.</div></div>
+      </div>
+      <div class="panel">
+        <div class="phd">
+          <div class="pttl">Data Quality Issues <span class="dq-badge wrn" id="dq-badge"></span></div>
+        </div>
+        <div class="ins-list" id="dq-list"><div class="empty">No data quality issues.</div></div>
+      </div>
+    </section>
+
+    <!-- ──── SETTINGS ──── -->
+    <section id="r-settings" style="display:none">
+      <div class="ph"><div class="ph-l"><span class="eyebrow">Co-Living</span><h1 class="h1">Target Settings</h1></div></div>
+      <div class="panel">
+        <div class="phd"><div class="pttl">Occupancy Targets</div></div>
+        <div class="pbd">
+          <div class="s-grid">
+            <div>
+              <div class="fg">
+                <label for="g-tgt">Global Target (%)</label>
+                <input type="number" id="g-tgt" min="0" max="100" value="90"/>
+              </div>
+              <p style="font-family:var(--fm);font-size:10px;color:var(--ink-4);margin:0 0 14px">Near-target band: ±5% of target</p>
+              <button class="btn btn-p" onclick="saveTarget()">Save Target</button>
+              <span id="save-ok" style="font-family:var(--fm);font-size:11px;color:var(--good);display:none;margin-left:8px">✓ Saved</span>
+            </div>
+            <div>
+              <div style="font-family:var(--fm);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+                          color:var(--ink-3);margin-bottom:10px">Per-Property Overrides</div>
+              <div id="tgt-ovr"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /dash -->
+</main>
+</div>
+
+<!-- Slide-over -->
+<div class="scrim" id="scrim" onclick="closeSlide()"></div>
+<div class="so" id="so" role="dialog" aria-modal="true" aria-labelledby="so-ttl">
+  <div class="so-hd">
+    <div>
+      <div id="so-ttl" style="font-size:15px;font-weight:600;color:var(--ink-1)">Unit Detail</div>
+      <div id="so-sub" style="font-family:var(--fm);font-size:10px;color:var(--ink-4);margin-top:3px"></div>
+    </div>
+    <button class="so-close" onclick="closeSlide()" aria-label="Close unit detail">✕</button>
+  </div>
+  <div class="so-body" id="so-body"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const S = {
+  view:'finance', month:'', prop:'', type:'', region:'', status:'',
+  route:'overview', sk:'name', sd:'asc',
+  target:{ global:90, pp:{} }
+};
+
+// ── Data cache ────────────────────────────────────────────────────────────────
+let D = { sumFin:{rate:0,avail:0,occ:0,vac:0,mom:0,ins:0,outs:0,below:0},
+          sumOps:{rate:0,avail:0,occ:0,vac:0,mom:0,ins:0,outs:0,below:0},
+          daily:[], props:[], dq:[], units:{} };
+
+// ── Chart refs ────────────────────────────────────────────────────────────────
+const CH = {};
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function api(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error(path + ' → ' + r.status);
+  return r.json();
+}
+
+function mapSum(d) {
+  return { rate:+(d.overallRate??0), avail:d.totalAvailable??0, occ:d.totalOccupied??0,
+           vac:d.totalVacant??0, mom:+(d.momChange??0),
+           ins:d.moveIns??0, outs:d.moveOuts??0, below:d.belowTargetCount??0 };
+}
+
+function mapProp(p) {
+  return { id:String(p.propertyId), name:p.propertyName, region:p.region||'—',
+           type:p.propertyType||'—', avail:p.available??0,
+           occ:p.occupied??0, vac:p.vacant??0, res:p.reserved??0, mnt:p.maintenance??0,
+           fin:+((p.financeRate??0).toFixed(1)), ops:+((p.opsRate??0).toFixed(1)),
+           ins:p.moveIns??0, outs:p.moveOuts??0,
+           upd:(p.lastUpdated||'').slice(0,10), tgt:p.targetRate??S.target.global };
+}
+
+async function fetchAll() {
+  const m = S.month;
+  const [sf,so,pd,dqd,dd] = await Promise.all([
+    api('/api/occupancy/summary?viewType=finance&month='+m),
+    api('/api/occupancy/summary?viewType=ops&month='+m),
+    api('/api/occupancy/properties?viewType=finance&month='+m),
+    api('/api/occupancy/data-quality'),
+    api('/api/occupancy/daily?month='+m),
+  ]);
+  D.sumFin = mapSum(sf);
+  D.sumOps = mapSum(so);
+  D.props  = (pd.properties||[]).map(mapProp);
+  D.dq     = (dqd.issues||[]).map(q=>({
+    prop:String(q.propertyId), pname:q.propertyName,
+    unit:q.entityName||String(q.entityId), issue:q.detail, sev:q.severity||'warn'
+  }));
+  D.daily  = (dd.series||[]).map(s=>({ date:s.date, rate:+((s.rate??0).toFixed(1)) }));
+  D.units  = {};
+}
+
+async function fetchUnits(pid) {
+  if (D.units[pid]) return D.units[pid];
+  const r = await api('/api/occupancy/units-monthly?propertyId='+pid+'&month='+S.month);
+  D.units[pid] = (r.units||r.data||[]).map(u=>({
+    id:u.unit_id||u.id, name:u.unit_name||u.id, type:u.unit_type||'—',
+    tenant:u.tenant_name||'—', ls:u.lease_start_date||'—', le:u.lease_end_date||'—',
+    mi:u.move_in_date||'—', mo:u.move_out_date||'—', status:u.status||'—',
+    dv:u.days_vacant??'—', na:u.next_available||'—', notes:u.notes||'',
+    dq:u.dq_flags||[], crm:u.crm_link||u.crm_url||'#'
+  }));
+  return D.units[pid];
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function boot() {
+  show('load');
+  loadLS();
+  if (!S.month) S.month = new Date().toISOString().slice(0,7);
+  const fM = document.getElementById('f-month');
+  if (fM) fM.value = S.month;
+  try {
+    await fetchAll();
+    populatePropFilter();
+    renderAll();
+    show('dash');
+    const ts = new Date().toLocaleString('en-SG',{timeZone:'Asia/Singapore',dateStyle:'short',timeStyle:'short'});
+    document.getElementById('ph-upd').textContent = 'Updated ' + ts;
+    document.getElementById('sb-upd').textContent = 'Synced ' + ts;
+  } catch(e) {
+    console.error(e);
+    show('err');
+  }
+}
+
+function show(s) {
+  document.getElementById('st-load').style.display = s==='load' ? '' : 'none';
+  document.getElementById('st-err').style.display  = s==='err'  ? '' : 'none';
+  document.getElementById('dash').style.display    = s==='dash' ? '' : 'none';
+}
+
+function loadLS() {
+  try {
+    const t = localStorage.getItem('tap.occ-target'); if (t) S.target = JSON.parse(t);
+    const v = localStorage.getItem('tap.occ-view');   if (v) S.view = v;
+    const m = localStorage.getItem('tap.occ-month');  if (m) S.month = m;
+    const g = document.getElementById('g-tgt');
+    if (g) g.value = S.target.global;
+  } catch{}
+}
+
+// ── Routing ───────────────────────────────────────────────────────────────────
+function go(route) {
+  S.route = route;
+  document.querySelectorAll('.ni').forEach(el =>
+    el.classList.toggle('on', el.dataset.route === route));
+  ['overview','properties','insights','settings'].forEach(r => {
+    const el = document.getElementById('r-'+r);
+    if (el) el.style.display = r === route ? '' : 'none';
+  });
+  if (route === 'settings') renderSettings();
+  if (route === 'properties') renderPropTable();
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function fProps() {
+  return D.props.filter(p => {
+    if (S.prop   && p.id   !== S.prop)              return false;
+    if (S.type   && p.type.toLowerCase() !== S.type) return false;
+    if (S.region && p.region !== S.region)           return false;
+    return true;
+  });
+}
+
+async function onFilter() {
+  const prev = S.month;
+  S.month  = document.getElementById('f-month').value  || S.month;
+  S.prop   = document.getElementById('f-prop').value;
+  S.type   = document.getElementById('f-type').value;
+  S.region = document.getElementById('f-region').value;
+  S.status = document.getElementById('f-status').value;
+  try { localStorage.setItem('tap.occ-month', S.month); } catch{}
+  if (S.month !== prev) {
+    show('load');
+    try { await fetchAll(); } catch(e) { console.error(e); }
+    show('dash');
+  }
+  renderAll();
+}
+
+function resetFilters() {
+  const now = new Date().toISOString().slice(0,7);
+  ['f-month','f-prop','f-type','f-region','f-status'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = id === 'f-month' ? now : '';
+  });
+  S.prop = ''; S.type = ''; S.region = ''; S.status = ''; S.month = now;
+  onFilter();
+}
+
+function populatePropFilter() {
+  const sel = document.getElementById('f-prop'), cur = sel.value;
+  sel.innerHTML = '<option value="">All Properties</option>';
+  D.props.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id; o.textContent = p.name;
+    if (p.id === cur) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+// ── View toggle ───────────────────────────────────────────────────────────────
+function setView(v) {
+  S.view = v;
+  try { localStorage.setItem('tap.occ-view', v); } catch{}
+  document.getElementById('btn-fin').classList.toggle('on', v==='finance');
+  document.getElementById('btn-ops').classList.toggle('on',  v==='ops');
+  document.getElementById('btn-fin').setAttribute('aria-pressed', String(v==='finance'));
+  document.getElementById('btn-ops').setAttribute('aria-pressed', String(v==='ops'));
+  document.getElementById('vdef').innerHTML = v==='finance'
+    ? '<strong>Finance:</strong> Occupied at any point in the month'
+    : '<strong>Operations:</strong> Average daily occupancy across the month';
+  document.getElementById('line-panel').style.display = v==='ops' ? '' : 'none';
+  renderKPIs(); renderPropTable(); renderBar();
+}
+
+// ── renderAll ─────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderKPIs();
+  renderOvInsights();
+  renderInsights();
+  renderDQ();
+  renderPropTable();
+  renderCharts();
+  const cnt = computeInsights().length + D.dq.length;
+  const el = document.getElementById('sb-cnt');
+  if (el) el.textContent = cnt > 0 ? String(cnt) : '';
+}
+
+// ── KPI cards ─────────────────────────────────────────────────────────────────
+function renderKPIs() {
+  const d = S.view==='finance' ? D.sumFin : D.sumOps;
+  const tgt = S.target.global;
+  const rst = d.rate >= tgt ? 'good' : d.rate >= tgt-5 ? 'wrn' : 'bad';
+  const clr = {good:'var(--good)',wrn:'var(--warn)',bad:'var(--danger)'}[rst];
+  const cards = [
+    { lbl: S.view==='finance' ? 'Finance Occ.' : 'Avg Daily Occ.',
+      val: d.rate.toFixed(1)+'%', sub:(d.mom>=0?'+':'')+d.mom.toFixed(1)+'% MoM',
+      sc: d.mom>=0 ? 'good' : 'bad', style:'border-top:3px solid '+clr },
+    { lbl:'Available Units', val:d.avail, sub:'total capacity', sc:'' },
+    { lbl:'Occupied', val:d.occ, sub:pct(d.occ,d.avail)+'% of capacity', sc:'' },
+    { lbl:'Vacant', val:d.vac, sub:pct(d.vac,d.avail)+'% vacancy', sc:d.vac>5?'wrn':'' },
+    { lbl:'MoM Change', val:(d.mom>=0?'+':'')+d.mom.toFixed(1)+'%', sub:'vs last month', sc:d.mom>=0?'good':'bad' },
+    { lbl:'Move-Ins',  val:d.ins,   sub:'this month', sc:'' },
+    { lbl:'Move-Outs', val:d.outs,  sub:'this month', sc:'' },
+    { lbl:'Below Target', val:d.below, sub:'properties — click to view', sc:d.below>0?'bad':'good', click:true },
+  ];
+  document.getElementById('kpi-grid').innerHTML = cards.map(c=>`
+    <div class="kpi${c.click?' click':''}" role="listitem"
+         ${c.click?'onclick="go(\'properties\')" tabindex="0" onkeydown="if(event.key===\'Enter\')go(\'properties\')" aria-label="'+c.lbl+': '+c.val+', view properties"':''}>
+      <div class="kpi-lbl">${c.lbl}</div>
+      <div class="kpi-val" ${c.style?'style="'+c.style+'"':''}>${c.val}</div>
+      <div class="kpi-sub ${c.sc}">${c.sub}</div>
+    </div>`).join('');
+}
+
+function pct(a,b) { return b ? ((a/b)*100).toFixed(1) : '0.0'; }
+
+// ── Insights ──────────────────────────────────────────────────────────────────
+function computeInsights() {
+  const props = fProps(), tgt = S.target.global;
+  const ins = [];
+  const below = props.filter(p => (S.view==='finance'?p.fin:p.ops) < (S.target.pp[p.id]??tgt)-5);
+  if (below.length) ins.push({
+    sev: below.some(p=>(S.target.pp[p.id]??tgt)-(S.view==='finance'?p.fin:p.ops)>10)?'bad':'wrn',
+    ttl: below.length+' '+(below.length===1?'property':'properties')+' below target',
+    det: below.slice(0,3).map(p=>p.name).join(', '), ct: below.length
+  });
+  // Vacant units (from loaded drilldown data)
+  const allU = Object.values(D.units).flat();
+  const v30 = allU.filter(u=>u.status==='Vacant'&&+u.dv>30).length;
+  const v14 = allU.filter(u=>u.status==='Vacant'&&+u.dv>14&&+u.dv<=30).length;
+  const mo30 = allU.filter(u=>{
+    if (!u.le||u.le==='—') return false;
+    const d=(new Date(u.le)-Date.now())/864e5; return d>=0&&d<=30;
+  }).length;
+  if (v30) ins.push({sev:'bad', ttl:v30+' unit'+(v30!==1?'s':'')+' vacant >30 days', det:'Immediate escalation needed', ct:v30});
+  if (v14) ins.push({sev:'wrn', ttl:v14+' unit'+(v14!==1?'s':'')+' vacant 14–30 days', det:'Follow up with leasing', ct:v14});
+  if (mo30) ins.push({sev:'inf', ttl:mo30+' move-out'+(mo30!==1?'s':'')+' in 30 days', det:'Open re-letting workflow now', ct:mo30});
+  return ins;
+}
+
+function insHtml(ins) {
+  return ins.map(i=>`
+    <div class="ins-item ${i.sev}" role="listitem">
+      <div class="ins-rail" aria-hidden="true"></div>
+      <div><div class="ins-ttl">${i.ttl}</div><div class="ins-det">${i.det}</div></div>
+      <div class="ins-ct">${i.ct}</div>
+    </div>`).join('');
+}
+
+function renderInsights() {
+  const ins = computeInsights();
+  const b = document.getElementById('ins-badge');
+  if (b) b.textContent = ins.length || '';
+  const el = document.getElementById('ins-list');
+  if (el) el.innerHTML = ins.length ? insHtml(ins) : '<div class="empty">No insights — all metrics within target.</div>';
+}
+
+function renderDQ() {
+  const b = document.getElementById('dq-badge');
+  if (b) b.textContent = D.dq.length || '';
+  const el = document.getElementById('dq-list');
+  if (!el) return;
+  el.innerHTML = D.dq.length ? D.dq.map(d=>`
+    <div class="ins-item ${d.sev==='err'?'bad':'wrn'}" role="listitem">
+      <div class="ins-rail" aria-hidden="true"></div>
+      <div><div class="ins-ttl">${d.pname} — ${d.unit}</div><div class="ins-det">${d.issue}</div></div>
+      <button class="btn btn-g btn-xs" onclick="openSlide('${d.prop}')" aria-label="View ${d.unit}">View →</button>
+    </div>`).join('') : '<div class="empty">No data quality issues.</div>';
+}
+
+function renderOvInsights() {
+  const ins = computeInsights();
+  const el = document.getElementById('ov-ins');
+  if (!el) return;
+  const total = ins.length + D.dq.length;
+  if (!total) { el.innerHTML=''; return; }
+  el.innerHTML = `<div class="panel" style="margin-bottom:18px">
+    <div class="phd">
+      <div class="pttl">Insights &amp; Alerts
+        <span class="dq-badge bad">${total}</span>
+      </div>
+      <button class="btn btn-g btn-xs" onclick="go('insights')">View All</button>
+    </div>
+    <div class="ins-list">${insHtml(ins.slice(0,3))}</div>
+  </div>`;
+}
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+function renderCharts() {
+  renderLine();
+  renderBar();
+  renderCal();
+  document.getElementById('line-panel').style.display = S.view==='ops' ? '' : 'none';
+}
+
+function destroyCh(id) { if (CH[id]) { CH[id].destroy(); delete CH[id]; } }
+
+const CHART_OPTS = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{ legend:{ display:false } },
+};
+
+function renderLine() {
+  destroyCh('line');
+  if (!D.daily.length) return;
+  const ctx = document.getElementById('c-line').getContext('2d');
+  const vals = D.daily.map(d=>d.rate);
+  const avg = +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+  const mx = Math.max(...vals), mn = Math.min(...vals);
+  const tgtLine = new Array(D.daily.length).fill(S.target.global);
+  CH.line = new Chart(ctx, {
+    type:'line',
+    data:{ labels:D.daily.map(d=>d.date.slice(5)), datasets:[
+      { label:'Daily %', data:vals, fill:true,
+        borderColor:'#2F7D5B', backgroundColor:'rgba(47,125,91,.1)',
+        borderWidth:2, pointRadius:0, tension:.3 },
+      { label:'Target '+S.target.global+'%', data:tgtLine, fill:false,
+        borderColor:'rgba(184,58,43,.45)', borderDash:[4,3],
+        borderWidth:1.5, pointRadius:0 }
+    ]},
+    options:{ ...CHART_OPTS,
+      plugins:{ ...CHART_OPTS.plugins,
+        legend:{ display:false },
+        tooltip:{ backgroundColor:'#0E0E0C', titleColor:'#B8B7AE', bodyColor:'#FBFAF6',
+          bodyFont:{family:'ui-monospace,monospace',size:11},
+          callbacks:{ label:c=>c.dataset.label+': '+c.raw+'%' } }
+      },
+      scales:{
+        x:{ grid:{color:'rgba(20,18,12,.05)'}, ticks:{font:{family:'ui-monospace,monospace',size:9},color:'#8A8A82',maxTicksLimit:10} },
+        y:{ grid:{color:'rgba(20,18,12,.05)'}, ticks:{font:{family:'ui-monospace,monospace',size:9},color:'#8A8A82',callback:v=>v+'%'},
+            min:Math.max(0,mn-8), max:Math.min(100,mx+8) }
+      }
+    }
+  });
+  document.getElementById('line-meta').innerHTML =
+    `<span>Avg <strong>${avg}%</strong></span><span>High <strong>${mx}%</strong></span><span>Low <strong>${mn}%</strong></span>`;
+}
+
+function renderBar() {
+  destroyCh('bar');
+  const props = fProps();
+  if (!props.length) return;
+  const ctx = document.getElementById('c-bar').getContext('2d');
+  CH.bar = new Chart(ctx, {
+    type:'bar',
+    data:{ labels:props.map(p=>p.name.length>14?p.name.slice(0,14)+'…':p.name), datasets:[
+      { label:'Finance %', data:props.map(p=>p.fin), backgroundColor:'rgba(47,125,91,.75)', borderRadius:2 },
+      { label:'Ops %',     data:props.map(p=>p.ops), backgroundColor:'rgba(74,91,180,.65)', borderRadius:2 },
+    ]},
+    options:{ ...CHART_OPTS,
+      plugins:{ ...CHART_OPTS.plugins,
+        legend:{ display:true, position:'top',
+          labels:{ font:{family:'ui-monospace,monospace',size:10}, color:'#5C5C56', boxWidth:10, boxHeight:10, padding:12 } },
+        tooltip:{ backgroundColor:'#0E0E0C', titleColor:'#B8B7AE', bodyColor:'#FBFAF6',
+          bodyFont:{family:'ui-monospace,monospace',size:11},
+          callbacks:{ label:c=>c.dataset.label+': '+c.raw+'%' } }
+      },
+      scales:{
+        x:{ grid:{display:false}, ticks:{font:{family:'ui-monospace,monospace',size:9},color:'#8A8A82'} },
+        y:{ grid:{color:'rgba(20,18,12,.05)'}, ticks:{font:{family:'ui-monospace,monospace',size:9},color:'#8A8A82',callback:v=>v+'%'},
+            min:0, max:100 }
+      }
+    }
+  });
+}
+
+const HEAT_COLORS = [
+  {min:95, bg:'#1B4332', fg:'#a7f3d0'},
+  {min:90, bg:'#166534', fg:'#bbf7d0'},
+  {min:85, bg:'#15803d', fg:'#dcfce7'},
+  {min:80, bg:'#16a34a', fg:'#f0fdf4'},
+  {min:70, bg:'#a16207', fg:'#fef9c3'},
+  {min:60, bg:'#b45309', fg:'#fff7ed'},
+  {min:0,  bg:'#b91c1c', fg:'#fff1f2'},
+];
+
+function heatCol(r) { return HEAT_COLORS.find(c=>r>=c.min) || HEAT_COLORS[HEAT_COLORS.length-1]; }
+
+function renderCal() {
+  const el = document.getElementById('cal');
+  if (!el) return;
+  if (!D.daily.length) { el.innerHTML='<div class="empty">No daily data.</div>'; return; }
+  const DAYS=['Mo','Tu','We','Th','Fr','Sa','Su'];
+  const first = new Date(D.daily[0].date+'T00:00:00');
+  const dow = (first.getDay()+6)%7;
+  let html = '<div class="cal-drow">'+DAYS.map(d=>`<div class="cal-dh">${d}</div>`).join('')+'</div>';
+  html += '<div class="cal-drow">';
+  for (let i=0;i<dow;i++) html += '<div></div>';
+  D.daily.forEach((d,i)=>{
+    const c = heatCol(d.rate);
+    html += `<div class="cal-cell" style="background:${c.bg}" title="Day ${i+1} (${d.date}): ${d.rate}%">
+      <span class="cal-dn" style="color:${c.fg};opacity:.75">${i+1}</span>
+      <span class="cal-pct" style="color:${c.fg}">${d.rate}%</span>
+    </div>`;
+    // start new row after Sunday
+    const pos = (dow + i + 1);
+    if (pos % 7 === 0 && i < D.daily.length - 1) html += '</div><div class="cal-drow">';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+  const lgd = document.getElementById('cal-lgd');
+  if (lgd) lgd.innerHTML = [
+    {bg:'#b91c1c',l:'<60%'},{bg:'#b45309',l:'60–70%'},{bg:'#a16207',l:'70–80%'},
+    {bg:'#16a34a',l:'80–85%'},{bg:'#166534',l:'85–90%'},{bg:'#1B4332',l:'90%+'}
+  ].map(x=>`<div class="cal-li"><div class="cal-sq" style="background:${x.bg}"></div>${x.l}</div>`).join('');
+}
+
+// ── Property table ────────────────────────────────────────────────────────────
+const COLS=[
+  {k:'name',l:'Property',  n:false},{k:'avail',l:'Avail',    n:true},
+  {k:'occ', l:'Occupied',  n:true}, {k:'vac',  l:'Vacant',   n:true},
+  {k:'res', l:'Reserved',  n:true}, {k:'mnt',  l:'Maint.',   n:true},
+  {k:'fin', l:'Finance %', n:true}, {k:'ops',  l:'Ops %',    n:true},
+  {k:'ins', l:'Move-Ins',  n:true}, {k:'outs', l:'Move-Outs',n:true},
+  {k:'upd', l:'Updated',   n:false},{k:'_st',  l:'Status',   n:false},
+];
+
+function propSt(p) {
+  const r=S.view==='finance'?p.fin:p.ops, t=S.target.pp[p.id]??S.target.global;
+  return r>=t?'good':r>=t-5?'wrn':'bad';
+}
+const stLbl={good:'↑ Above',wrn:'~ Near',bad:'↓ Below'};
+const stCls={good:'tg',wrn:'tw',bad:'tb'};
+
+function sortedProps() {
+  return [...fProps()].sort((a,b)=>{
+    let va=a[S.sk]??'', vb=b[S.sk]??'';
+    if (typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();}
+    return (S.sd==='asc'?1:-1)*(va>vb?1:va<vb?-1:0);
+  });
+}
+
+function sortByCol(k) {
+  if (S.sk===k) S.sd=S.sd==='asc'?'desc':'asc';
+  else { S.sk=k; S.sd='asc'; }
+  renderPropTable();
+}
+
+function renderPropTable() {
+  const props = sortedProps();
+  const th = document.getElementById('prop-thead');
+  const tb = document.getElementById('prop-tbody');
+  const ttl= document.getElementById('prop-ttl');
+  if (!th||!tb) return;
+  if (ttl) ttl.textContent = props.length+' propert'+(props.length!==1?'ies':'y');
+  th.innerHTML = `<tr>${COLS.map(c=>`
+    <th class="${c.k===S.sk?'sk':''} ${c.n?'num':''}"
+        onclick="sortByCol('${c.k}')"
+        aria-sort="${c.k===S.sk?(S.sd==='asc'?'ascending':'descending'):'none'}">
+      ${c.l}${c.k===S.sk?(S.sd==='asc'?' ↑':' ↓'):''}
+    </th>`).join('')}</tr>`;
+  if (!props.length) {
+    tb.innerHTML=`<tr><td colspan="${COLS.length}" class="empty">No properties match filters.</td></tr>`;
+    return;
+  }
+  tb.innerHTML = props.map(p=>{
+    const st=propSt(p), tgt=S.target.pp[p.id]??S.target.global;
+    return `<tr onclick="openSlide('${p.id}')" tabindex="0"
+                onkeydown="if(event.key==='Enter'||event.key===' ')openSlide('${p.id}')"
+                aria-label="View units for ${p.name}">
+      <td><div class="dt-pri">${p.name}</div><div class="dt-sub">${p.region} · ${p.type}</div></td>
+      <td class="num">${p.avail}</td>
+      <td class="num">${p.occ}</td>
+      <td class="num ${p.vac>0?'wrn':''}">${p.vac}</td>
+      <td class="num">${p.res}</td>
+      <td class="num">${p.mnt}</td>
+      <td class="num"><div class="pct-wrap"><div class="pct-bar"><i class="${st}" style="width:${p.fin}%;background:${st==='good'?'var(--good)':st==='wrn'?'var(--warn)':'var(--danger)'}"></i></div><span class="${st}">${p.fin}%</span></div></td>
+      <td class="num"><div class="pct-wrap"><div class="pct-bar"><i class="${st}" style="width:${p.ops}%;background:${st==='good'?'var(--good)':st==='wrn'?'var(--warn)':'var(--danger)'}"></i></div><span class="${st}">${p.ops}%</span></div></td>
+      <td class="num">${p.ins}</td>
+      <td class="num">${p.outs}</td>
+      <td style="color:var(--ink-4);font-family:var(--fm);font-size:11px">${p.upd}</td>
+      <td><span class="tag ${stCls[st]}" title="Target: ${tgt}%">${stLbl[st]}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Slide-over ────────────────────────────────────────────────────────────────
+function openSlide(pid) {
+  const p = D.props.find(x=>x.id===pid);
+  if (!p) return;
+  document.getElementById('so-ttl').textContent = p.name;
+  document.getElementById('so-sub').textContent = p.region+' · '+p.type+' · '+p.avail+' units';
+  document.getElementById('so-body').innerHTML = '<div class="st"><div class="spin"></div>Loading units…</div>';
+  document.getElementById('scrim').classList.add('open');
+  document.getElementById('so').classList.add('open');
+  document.getElementById('so').focus();
+  fetchUnits(pid).then(units=>{
+    const uSt=u=>{
+      if(u.status==='Occupied') return 'tg';
+      if(u.status==='Reserved') return 'tr';
+      if(u.status==='Vacant') return +u.dv>30?'tb':+u.dv>14?'tw':'tw';
+      return 'tm';
+    };
+    const cols=['Unit','Tenant','Status','Days Vacant','Lease Start','Lease End','Move-In','Move-Out','Next Avail','CRM'];
+    document.getElementById('so-body').innerHTML = `
+      <div style="overflow-x:auto">
+        <table class="dt" aria-label="Units in ${p.name}">
+          <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+          <tbody>${!units.length
+            ? `<tr><td colspan="${cols.length}" class="empty">No unit data for this property.</td></tr>`
+            : units.map(u=>`<tr>
+                <td><div class="dt-pri">${u.name}</div><div class="dt-sub">${u.type}</div></td>
+                <td>${u.tenant}</td>
+                <td><span class="tag ${uSt(u)}">${u.status}</span>${u.dq.length?` <span style="color:var(--warn);font-family:var(--fm);font-size:9px">⚠ DQ</span>`:''}</td>
+                <td class="num">${u.dv}</td>
+                <td>${u.ls}</td>
+                <td>${!u.le||u.le==='—'?'<span style="color:var(--danger)">Missing</span>':u.le}</td>
+                <td>${u.mi}</td>
+                <td>${u.mo}</td>
+                <td>${u.na}</td>
+                <td><a href="${u.crm}" style="color:var(--res);font-family:var(--fm);font-size:11px"
+                       target="_blank" rel="noopener noreferrer" aria-label="CRM link for ${u.name}">Open →</a></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }).catch(e=>{
+    document.getElementById('so-body').innerHTML = `<div class="st err">Failed to load units: ${e.message}<br><br><button class="btn btn-g" onclick="openSlide('${pid}');void D.units['${pid}']&&delete D.units['${pid}']">Retry</button></div>`;
+  });
+}
+
+function closeSlide() {
+  document.getElementById('scrim').classList.remove('open');
+  document.getElementById('so').classList.remove('open');
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function renderSettings() {
+  const g = document.getElementById('g-tgt');
+  if (g) g.value = S.target.global;
+  const ovr = document.getElementById('tgt-ovr');
+  if (!ovr) return;
+  ovr.innerHTML = D.props.map(p=>`
+    <div class="ovr-row">
+      <span>${p.name}</span>
+      <input type="number" min="0" max="100" value="${S.target.pp[p.id]??''}"
+             placeholder="${S.target.global}% (global)" aria-label="Target for ${p.name}"
+             onchange="setPropTgt('${p.id}',this.value)"/>
+    </div>`).join('');
+}
+
+function saveTarget() {
+  const v = parseInt(document.getElementById('g-tgt').value);
+  if (isNaN(v)||v<0||v>100) return;
+  S.target.global = v;
+  try { localStorage.setItem('tap.occ-target', JSON.stringify(S.target)); } catch{}
+  const ok = document.getElementById('save-ok');
+  ok.style.display=''; setTimeout(()=>ok.style.display='none',2000);
+  renderAll();
+}
+
+function setPropTgt(id, val) {
+  const v = parseInt(val);
+  if (!isNaN(v)&&v>=0&&v<=100) S.target.pp[id]=v;
+  else delete S.target.pp[id];
+  try { localStorage.setItem('tap.occ-target', JSON.stringify(S.target)); } catch{}
+  renderPropTable();
+}
+
+// ── CSV Export ────────────────────────────────────────────────────────────────
+function exportCSV(type) {
+  const props = fProps();
+  let hdr, rows;
+  if (type==='property') {
+    hdr=['Property','Region','Type','Available','Occupied','Vacant','Reserved','Maint','Finance%','Ops%','Move-Ins','Move-Outs','Updated'];
+    rows=props.map(p=>[p.name,p.region,p.type,p.avail,p.occ,p.vac,p.res,p.mnt,p.fin,p.ops,p.ins,p.outs,p.upd]);
+  } else if (type==='finance') {
+    hdr=['Property','Finance Occ%','Target%','Status','Move-Ins','Move-Outs'];
+    rows=props.map(p=>[p.name,p.fin,S.target.pp[p.id]??S.target.global,stLbl[propSt(p)],p.ins,p.outs]);
+  } else {
+    hdr=['Property','Ops Occ%','Target%','Status'];
+    rows=props.map(p=>[p.name,p.ops,S.target.pp[p.id]??S.target.global,stLbl[propSt(p)]]);
+  }
+  const csv=[hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='tap-occupancy-'+type+'-'+S.month+'.csv';
+  a.click();
+}
+
+// ── Misc ──────────────────────────────────────────────────────────────────────
+function toggleDD() { document.getElementById('exp-menu').classList.toggle('open'); }
+
+let rsz;
+window.addEventListener('resize',()=>{ clearTimeout(rsz); rsz=setTimeout(()=>{ if(document.getElementById('dash').style.display!=='none') renderCharts(); },250); });
+
+document.addEventListener('DOMContentLoaded',()=>{
+  ['f-month','f-prop','f-type','f-region','f-status'].forEach(id=>
+    document.getElementById(id)?.addEventListener('change',onFilter));
+  document.addEventListener('click',e=>{
+    if (!document.getElementById('exp-dd')?.contains(e.target))
+      document.getElementById('exp-menu')?.classList.remove('open');
+  });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeSlide(); });
+  boot();
+});
+</script>
 </body>
 </html>
