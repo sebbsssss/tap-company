@@ -18,6 +18,8 @@ from datetime import date, timedelta
 from typing import Any, Optional
 
 from occupancy.calculator import (
+    _month_bounds,
+    _ops_occupied_on_day,
     compute_daily_series,
     compute_property_occupancy,
     compute_summary,
@@ -246,6 +248,10 @@ def handle_properties(params: dict, data: OccupancyData, store: TargetStore) -> 
         rate = po.ops_rate if view_type == "ops" else po.finance_rate
         target = targets.get(prop.id, 0.85)
 
+        units = data.units_for_property(prop.id)
+        status_counts = {s: sum(1 for u in units if u.status == s)
+                         for s in ("occupied", "vacant", "reserved", "maintenance")}
+
         row = {
             "propertyId": prop.id,
             "propertyName": prop.name,
@@ -253,12 +259,26 @@ def handle_properties(params: dict, data: OccupancyData, store: TargetStore) -> 
             "region": prop.region,
             "available": po.total_available,
             "financeRate": round(po.finance_rate * 100, 1),
+            "financeOccCount": po.finance_occupied,
             "opsRate": round(po.ops_rate * 100, 1),
             "moveIns": po.move_ins,
             "moveOuts": po.move_outs,
             "targetRate": round(target * 100, 1),
             "belowTarget": rate < target,
             "lastUpdated": data.fetched_at,
+            "occupied": status_counts["occupied"],
+            "vacant": status_counts["vacant"],
+            "reserved": status_counts["reserved"],
+            "maintenance": status_counts["maintenance"],
+            "dailySeries": [
+                {
+                    "date": dr.day.isoformat(),
+                    "occupied": dr.occupied,
+                    "available": dr.available,
+                    "rate": round(dr.rate * 100, 1),
+                }
+                for dr in po.daily_rates
+            ],
         }
         if status_filter:
             if status_filter == "below_target" and rate >= target:
@@ -278,6 +298,125 @@ def handle_units(property_id: str, params: dict, data: OccupancyData, store: Tar
 
     rows = _unit_drill_down(data, property_id)
     return _json({"propertyId": property_id, "propertyName": prop.name, "units": rows})
+
+
+def _dq_flags_by_unit(data: OccupancyData) -> dict[str, list[str]]:
+    """Map unit_id → list of DQ flag strings."""
+    issues = run_checks(data)
+    lease_unit_map = {l.id: l.unit_id for l in data.leases}
+    flags: dict[str, list[str]] = {}
+    for issue in issues:
+        uid: Optional[str] = None
+        if issue.entity_type == "unit":
+            uid = issue.entity_id
+        elif issue.entity_type == "lease":
+            uid = lease_unit_map.get(issue.entity_id)
+        if uid:
+            flags.setdefault(uid, []).append(issue.issue_type)
+    return flags
+
+
+def handle_units_monthly(params: dict, data: OccupancyData, store: TargetStore) -> Response:
+    """GET /api/occupancy/units-monthly
+
+    Returns all units (or units for a specific property) with per-day occupancy
+    arrays for the requested month. Used by the dashboard data layer to populate
+    the unit calendar strips and compute vacancy insights.
+
+    Query params: month=YYYY-MM, property=<id> (optional)
+    """
+    month, err = _require_month(params)
+    if err:
+        return err
+
+    property_filter = params.get("property")
+    month_start, month_end = _month_bounds(month)
+    days_in_month = (month_end - month_start).days + 1
+
+    props = data.properties
+    if property_filter:
+        props = [p for p in props if p.id == property_filter]
+        if not props:
+            return _error(f"Property '{property_filter}' not found", 404)
+
+    today = date.today()
+    tenant_map = {t.id: t for t in data.tenants}
+    dq_flags = _dq_flags_by_unit(data)
+
+    result_units = []
+    for prop in props:
+        units = data.units_for_property(prop.id)
+        for u in units:
+            leases = [l for l in data.leases if l.unit_id == u.id]
+            active = next((l for l in leases if l.status == "active"), None)
+            tenant = tenant_map.get(
+                active.tenant_id if active else (u.tenant_id or "")
+            )
+
+            # Per-day occupancy strip for the month
+            days: list[bool] = []
+            day = month_start
+            while day <= month_end:
+                days.append(_ops_occupied_on_day(leases, day))
+                day += timedelta(days=1)
+
+            # Days vacant (count consecutive false days back from today within month)
+            days_vacant = 0
+            if u.status in ("vacant", "maintenance"):
+                today_idx = min((today - month_start).days, days_in_month - 1)
+                if today_idx >= 0:
+                    for k in range(today_idx, -1, -1):
+                        if not days[k]:
+                            days_vacant += 1
+                        else:
+                            break
+
+            # Upcoming move-out within 30 days
+            upcoming_move_out = False
+            if active and active.move_out_date:
+                diff = (active.move_out_date - today).days
+                if 0 < diff <= 30:
+                    upcoming_move_out = True
+
+            # Next available date
+            next_available: Optional[str] = None
+            upcoming_lease = next(
+                (l for l in leases
+                 if l.status in ("upcoming", "active")
+                 and l.contract_start and l.contract_start > today),
+                None,
+            )
+            if upcoming_lease and upcoming_lease.contract_start:
+                next_available = upcoming_lease.contract_start.isoformat()
+
+            result_units.append({
+                "unit_id": u.id,
+                "property_id": prop.id,
+                "property_name": prop.name,
+                "unit_name": u.unit_name,
+                "unit_type": u.unit_type,
+                "status": u.status,
+                "tenant_name": tenant.name if tenant else None,
+                "tenant_id": tenant.id if tenant else None,
+                "lease_start": active.contract_start.isoformat() if (active and active.contract_start) else None,
+                "lease_end": active.contract_end.isoformat() if (active and active.contract_end) else None,
+                "move_in": active.move_in_date.isoformat() if (active and active.move_in_date) else None,
+                "move_out": active.move_out_date.isoformat() if (active and active.move_out_date) else None,
+                "days": days,
+                "days_vacant": days_vacant,
+                "upcoming_move_out": upcoming_move_out,
+                "next_available": next_available,
+                "dq_flags": dq_flags.get(u.id, []),
+                "crm_link": u.crm_link,
+            })
+
+    return _json({
+        "month": month,
+        "daysInMonth": days_in_month,
+        "propertyFilter": property_filter,
+        "totalUnits": len(result_units),
+        "units": result_units,
+    })
 
 
 def handle_data_quality(params: dict, data: OccupancyData, store: TargetStore) -> Response:

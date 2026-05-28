@@ -3,6 +3,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 COPY occupancy/ ./occupancy/
+COPY occupancy-dashboard.html ./
 
 # No external dependencies — pure stdlib
 # Fly.io injects PORT; OCCUPANCY_PORT is the app's own override
