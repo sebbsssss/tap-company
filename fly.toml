@@ -1,29 +1,30 @@
-# fly.toml — TAP Occupancy API
-# Deploy: fly deploy --region sin
-# Secrets: fly secrets set CRM_STAFF_API_KEY=<key>
+# fly.toml app configuration file generated for tap-company on 2026-05-28T04:03:37Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "tap-occupancy-api"
-primary_region = "sin"
+app = 'tap-company'
+primary_region = 'sin'
 
 [build]
 
 [env]
-  OCCUPANCY_PORT = "8080"
+  OCCUPANCY_PORT = '8080'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
 
   [[http_service.checks]]
-    interval = "15s"
-    timeout = "5s"
-    grace_period = "10s"
-    method = "GET"
-    path = "/healthz"
+    interval = '15s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/healthz'
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "256mb"
+  size = 'shared-cpu-1x'
+  memory = '256mb'
