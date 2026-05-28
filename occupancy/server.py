@@ -39,9 +39,11 @@ from occupancy.target_store import TargetStore
 _ROUTES = [
     ("GET",  r"^/$",                                  "dashboard"),
     ("GET",  r"^/dashboard$",                         "dashboard"),
+    ("GET",  r"^/dashboard/(.+)$",                    "dashboard_static"),
     ("GET",  r"^/api/occupancy/summary$",             "summary"),
     ("GET",  r"^/api/occupancy/daily$",               "daily"),
     ("GET",  r"^/api/occupancy/properties$",          "properties"),
+    ("GET",  r"^/api/occupancy/units-monthly$",       "units_monthly"),
     ("GET",  r"^/api/occupancy/units/([^/]+)$",       "units"),
     ("GET",  r"^/api/occupancy/data-quality$",        "data_quality"),
     ("GET",  r"^/api/occupancy/export/csv$",          "export_csv"),
@@ -51,7 +53,22 @@ _ROUTES = [
     ("GET",  r"^/healthz$",                           "healthz"),
 ]
 
-_DASHBOARD_HTML = Path(__file__).parent.parent / "occupancy-dashboard.html"
+_DASHBOARD_DIR  = Path(__file__).parent.parent / "dashboard"
+_DASHBOARD_HTML = _DASHBOARD_DIR / "index.html"
+_DASHBOARD_HTML_LEGACY = Path(__file__).parent.parent / "occupancy-dashboard.html"
+
+_MIME = {
+    ".html": "text/html; charset=utf-8",
+    ".css":  "text/css; charset=utf-8",
+    ".js":   "application/javascript; charset=utf-8",
+    ".jsx":  "application/javascript; charset=utf-8",
+    ".ttf":  "font/ttf",
+    ".woff2": "font/woff2",
+    ".json": "application/json",
+    ".ico":  "image/x-icon",
+    ".svg":  "image/svg+xml",
+    ".png":  "image/png",
+}
 
 _COMPILED = [(m, re.compile(pat), name) for m, pat, name in _ROUTES]
 
@@ -116,11 +133,26 @@ def _build_handler(cfg: OccupancyConfig, fixtures_path: str | None) -> type:
                 return
 
             if name == "dashboard":
-                if _DASHBOARD_HTML.exists():
-                    body = _DASHBOARD_HTML.read_bytes()
+                html_path = _DASHBOARD_HTML if _DASHBOARD_HTML.exists() else _DASHBOARD_HTML_LEGACY
+                if html_path.exists():
+                    body = html_path.read_bytes()
                     self._send(200, {"Content-Type": "text/html; charset=utf-8"}, body)
                 else:
                     self._json_error("Dashboard not found", 404)
+                return
+
+            if name == "dashboard_static":
+                rel = match.group(1)
+                # Prevent path traversal
+                target = (_DASHBOARD_DIR / rel).resolve()
+                if not str(target).startswith(str(_DASHBOARD_DIR.resolve())):
+                    self._json_error("Forbidden", 403)
+                    return
+                if target.is_file():
+                    ct = _MIME.get(target.suffix, "application/octet-stream")
+                    self._send(200, {"Content-Type": ct}, target.read_bytes())
+                else:
+                    self._json_error("Not found", 404)
                 return
 
             try:
@@ -141,6 +173,8 @@ def _build_handler(cfg: OccupancyConfig, fixtures_path: str | None) -> type:
                     status, headers, resp = handlers.handle_daily(params, data, store)
                 elif name == "properties":
                     status, headers, resp = handlers.handle_properties(params, data, store)
+                elif name == "units_monthly":
+                    status, headers, resp = handlers.handle_units_monthly(params, data, store)
                 elif name == "units":
                     property_id = match.group(1)
                     status, headers, resp = handlers.handle_units(property_id, params, data, store)
