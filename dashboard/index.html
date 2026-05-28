@@ -4,18 +4,47 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TAP — Co-Living Occupancy</title>
-  <link rel="stylesheet" href="/dashboard/styles.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Loading screen — shown until TAP_DATA_READY resolves */
+    #tap-loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+      background: var(--bg-0, #FBFAF6);
+      z-index: 9999;
+    }
+    #tap-loading .tap-spin {
+      width: 22px;
+      height: 22px;
+      border: 2px solid rgba(20, 18, 12, 0.12);
+      border-top-color: rgba(20, 18, 12, 0.6);
+      border-radius: 50%;
+      animation: tap-rotate 0.6s linear infinite;
+    }
+    #tap-loading .tap-label {
+      font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(20, 18, 12, 0.45);
+    }
+    @keyframes tap-rotate { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
-  <!-- Loading overlay — hidden once TAP_DATA_READY resolves -->
-  <div id="tap-loading" style="
-    position:fixed;inset:0;background:#FBFAF6;display:flex;align-items:center;
-    justify-content:center;z-index:9999;flex-direction:column;gap:12px;
-    font-family:ui-monospace,monospace;font-size:12px;color:#8A8A82;
-    letter-spacing:0.14em;text-transform:uppercase;">
-    <div>Loading occupancy data…</div>
+
+  <!-- Loading screen — hidden by app.jsx once TAP_DATA_READY resolves -->
+  <div id="tap-loading">
+    <div class="tap-spin"></div>
+    <div class="tap-label">Loading occupancy data…</div>
   </div>
 
+  <!-- React root -->
   <div id="root"></div>
 
   <script>
@@ -30,28 +59,36 @@
     })();
   </script>
 
-  <!-- React + Babel -->
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <!-- React 18 + Babel standalone -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js"
+          integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L"
+          crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"
+          integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm"
+          crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"
+          integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y"
+          crossorigin="anonymous"></script>
 
-  <!-- Recharts -->
+  <!-- Recharts (peer: prop-types) -->
   <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
   <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
 
-  <!-- Live data layer (sets window.TAP_DATA_READY promise) -->
-  <script src="/dashboard/src/data.js"></script>
+  <!-- Data layer — starts live fetch, falls back to mock; exposes window.TAP_DATA_READY -->
+  <script src="src/data.js"></script>
 
-  <!-- Tweaks shell -->
-  <script type="text/babel" src="/dashboard/tweaks-panel.jsx" data-presets="react"></script>
+  <!-- Tweaks shell (must come before app scripts so useTweaks / TweaksPanel are defined) -->
+  <script type="text/babel" src="tweaks-panel.jsx" data-presets="react"></script>
 
-  <!-- App scripts (order matters — atoms → charts → blocks → screens → app) -->
-  <script type="text/babel" src="/dashboard/src/atoms.jsx" data-presets="react"></script>
-  <script type="text/babel" src="/dashboard/src/charts.jsx" data-presets="react"></script>
-  <script type="text/babel" src="/dashboard/src/filterbar.jsx" data-presets="react"></script>
-  <script type="text/babel" src="/dashboard/src/insights.jsx" data-presets="react"></script>
-  <script type="text/babel" src="/dashboard/src/drilldown.jsx" data-presets="react"></script>
-  <script type="text/babel" src="/dashboard/src/screens.jsx" data-presets="react"></script>
-  <script type="text/babel" src="/dashboard/src/app.jsx" data-presets="react"></script>
+  <!-- App scripts — order matters: atoms → charts → filterbar → insights → drilldown → screens → app -->
+  <script type="text/babel" src="src/atoms.jsx"     data-presets="react"></script>
+  <script type="text/babel" src="src/charts.jsx"    data-presets="react"></script>
+  <script type="text/babel" src="src/filterbar.jsx" data-presets="react"></script>
+  <script type="text/babel" src="src/insights.jsx"  data-presets="react"></script>
+  <script type="text/babel" src="src/drilldown.jsx" data-presets="react"></script>
+  <script type="text/babel" src="src/screens.jsx"   data-presets="react"></script>
+  <!-- app.jsx mounts React after window.TAP_DATA_READY resolves -->
+  <script type="text/babel" src="src/app.jsx"       data-presets="react"></script>
+
 </body>
 </html>
