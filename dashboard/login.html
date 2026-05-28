@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in · The Assembly Place</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* =========================================================
+       Login page — split layout
+       ========================================================= */
+    .login {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 100vh;
+      background: var(--bg-0);
+    }
+
+    /* Brand panel (left) */
+    .login__brand {
+      background: var(--ink-1);
+      color: var(--bg-0);
+      padding: 40px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+    .login__brand::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 18px 18px;
+      mask-image: linear-gradient(180deg, transparent 0%, black 40%, black 80%, transparent 100%);
+      -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 40%, black 80%, transparent 100%);
+      pointer-events: none;
+    }
+    .login__brand-top,
+    .login__brand-mid,
+    .login__brand-bot { position: relative; z-index: 1; }
+    .login__brand-top { display: flex; align-items: baseline; gap: 12px; }
+    .login__wm {
+      font-family: var(--font-mono);
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--bg-0);
+    }
+    .login__wm-sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(251,250,246,0.55);
+      border-left: 1px solid rgba(255,255,255,0.18);
+      padding-left: 10px;
+    }
+    .login__brand-mid { max-width: 480px; }
+    .login__eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: rgba(251,250,246,0.50);
+      margin-bottom: 18px;
+    }
+    .login__headline {
+      font-family: var(--font-sans);
+      font-size: 44px;
+      font-weight: 600;
+      letter-spacing: -0.022em;
+      line-height: 1.05;
+      color: var(--bg-0);
+      margin: 0 0 22px;
+      text-wrap: balance;
+    }
+    .login__headline em {
+      font-style: italic;
+      font-weight: 400;
+      color: rgba(251,250,246,0.85);
+    }
+    .login__sub {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: rgba(251,250,246,0.70);
+      line-height: 1.55;
+      max-width: 420px;
+      margin: 0;
+    }
+    .login__metrics {
+      display: grid;
+      grid-template-columns: repeat(3, max-content);
+      gap: 32px;
+      margin-top: 38px;
+      padding-top: 26px;
+      border-top: 1px solid rgba(255,255,255,0.10);
+    }
+    .login__metric .v {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      font-variant-numeric: tabular-nums;
+      color: var(--bg-0);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .login__metric .l {
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(251,250,246,0.50);
+      font-weight: 600;
+    }
+    .login__brand-bot {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(251,250,246,0.40);
+    }
+    .login__brand-bot a { color: rgba(251,250,246,0.65); text-decoration: none; }
+    .login__brand-bot a:hover { color: var(--bg-0); }
+
+    /* Form panel (right) */
+    .login__form-wrap {
+      padding: 40px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: stretch;
+    }
+    .login__form {
+      width: 100%;
+      max-width: 380px;
+      margin: 0 auto;
+    }
+    .login__form-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+    .login__form-title {
+      font-family: var(--font-sans);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.018em;
+      line-height: 1.1;
+      color: var(--ink-1);
+      margin: 0 0 8px;
+    }
+    .login__form-lede {
+      font-size: 13px;
+      color: var(--ink-3);
+      margin: 0 0 28px;
+      line-height: 1.55;
+    }
+    .login__field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .login__label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .login__label a {
+      font-size: 10px;
+      letter-spacing: 0.10em;
+      color: var(--ink-1);
+      text-transform: uppercase;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .login__label a:hover { text-decoration: underline; }
+    .login__input {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--line-strong);
+      border-radius: var(--r-2);
+      padding: 11px 12px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--ink-1);
+      transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+      outline: none;
+    }
+    .login__input::placeholder { color: var(--ink-5); }
+    .login__input:focus {
+      border-color: var(--line-contrast);
+      box-shadow: var(--ring);
+    }
+    .login__input.is-error {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgba(184,58,43,0.10);
+    }
+    .login__password { position: relative; }
+    .login__pwd-toggle {
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      padding: 6px 10px;
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+      font-weight: 600;
+    }
+    .login__pwd-toggle:hover { color: var(--ink-1); }
+    .login__row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 6px 0 22px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .login__check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      color: var(--ink-3);
+      user-select: none;
+    }
+    .login__check input {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border: 1px solid var(--line-contrast);
+      border-radius: 2px;
+      background: var(--card);
+      cursor: pointer;
+      transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+      position: relative;
+    }
+    .login__check input:checked { background: var(--ink-1); border-color: var(--ink-1); }
+    .login__check input:checked::after {
+      content: "";
+      position: absolute;
+      left: 3px; top: 0px;
+      width: 4px; height: 8px;
+      border: solid var(--bg-0);
+      border-width: 0 1.5px 1.5px 0;
+      transform: rotate(45deg);
+    }
+    .login__btn {
+      width: 100%;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 13px 16px;
+      background: var(--ink-1);
+      color: var(--bg-0);
+      border: 1px solid var(--ink-1);
+      border-radius: var(--r-2);
+      cursor: pointer;
+      transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .login__btn:hover { background: transparent; color: var(--ink-1); }
+    .login__btn:disabled { opacity: 0.5; cursor: wait; }
+    .login__btn .arrow { transition: transform var(--dur-base) var(--ease); }
+    .login__btn:hover .arrow { transform: translateX(3px); }
+    .login__divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 22px 0;
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+      font-weight: 600;
+    }
+    .login__divider::before,
+    .login__divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+    .login__sso { display: grid; gap: 8px; }
+    .login__sso button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--card);
+      border: 1px solid var(--line-strong);
+      border-radius: var(--r-2);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--ink-2);
+      cursor: pointer;
+      transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+    }
+    .login__sso button:hover {
+      background: var(--bg-1);
+      border-color: var(--line-contrast);
+      color: var(--ink-1);
+    }
+    .login__sso svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .login__sso-disabled {
+      cursor: not-allowed !important;
+      opacity: 0.55;
+      background: var(--bg-1) !important;
+      color: var(--ink-3) !important;
+    }
+    .login__sso-disabled:hover {
+      background: var(--bg-1) !important;
+      border-color: var(--line-strong) !important;
+      color: var(--ink-3) !important;
+    }
+    .login__sso-tbc {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.20em;
+      padding: 2px 7px;
+      border: 1px solid var(--line-strong);
+      border-radius: 2px;
+      color: var(--ink-4);
+      background: var(--card);
+    }
+    .login__error {
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--danger);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .login__foot {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--ink-4);
+      letter-spacing: 0.04em;
+    }
+    .login__foot a { color: var(--ink-2); text-decoration: none; }
+    .login__foot a:hover { color: var(--ink-1); text-decoration: underline; }
+    .login__hint {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border: 1px dashed var(--line-strong);
+      border-radius: var(--r-2);
+      background: var(--bg-1);
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--ink-3);
+      line-height: 1.45;
+    }
+    .login__hint strong { color: var(--ink-1); font-weight: 700; letter-spacing: 0.04em; }
+
+    @media (max-width: 900px) {
+      .login { grid-template-columns: 1fr; }
+      .login__brand { padding: 28px 24px; min-height: 240px; }
+      .login__headline { font-size: 28px; }
+      .login__metrics { gap: 20px; }
+      .login__form-wrap { padding: 32px 24px 56px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="login">
+
+    <!-- Brand panel -->
+    <section class="login__brand">
+      <div class="login__brand-top">
+        <span class="login__wm">TAP</span>
+        <span class="login__wm-sub">The Assembly Place</span>
+      </div>
+
+      <div class="login__brand-mid">
+        <div class="login__eyebrow">Operator Portal · v2.1</div>
+        <h1 class="login__headline">
+          A clear view of every room, bed, and unit — <em>every day of the month.</em>
+        </h1>
+        <p class="login__sub">
+          One dashboard for Finance and Operations. Switch between monthly coverage and daily average occupancy without leaving the page. Drill into any property to see units, leases, and the work that needs doing this week.
+        </p>
+
+        <div class="login__metrics">
+          <div class="login__metric">
+            <div class="v">8</div>
+            <div class="l">Properties</div>
+          </div>
+          <div class="login__metric">
+            <div class="v">174</div>
+            <div class="l">Units</div>
+          </div>
+          <div class="login__metric">
+            <div class="v">90<span style="font-size:14px;color:rgba(251,250,246,0.55)">%</span></div>
+            <div class="l">Target Occupancy</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="login__brand-bot">
+        <span>© 2026 The Assembly Place</span>
+        <span>
+          <a href="#">Support</a> · <a href="#">Status</a> · <a href="#">Docs</a>
+        </span>
+      </div>
+    </section>
+
+    <!-- Form panel -->
+    <section class="login__form-wrap">
+      <form class="login__form" id="loginForm" novalidate>
+        <div class="login__form-eyebrow">Sign in</div>
+        <h2 class="login__form-title">Welcome back</h2>
+        <p class="login__form-lede">Access your occupancy dashboard. Use your work email.</p>
+
+        <div class="login__field">
+          <label class="login__label" for="email"><span>Work Email</span></label>
+          <input type="email" id="email" class="login__input"
+                 placeholder="shiying@assemblyplace.co"
+                 autocomplete="email" required />
+        </div>
+
+        <div class="login__field">
+          <label class="login__label" for="password">
+            <span>Password</span>
+            <a href="#" id="forgotLink">Forgot?</a>
+          </label>
+          <div class="login__password">
+            <input type="password" id="password" class="login__input"
+                   placeholder="••••••••••"
+                   autocomplete="current-password" required />
+            <button type="button" class="login__pwd-toggle" id="pwdToggle" aria-label="Show password">Show</button>
+          </div>
+        </div>
+
+        <div id="errorBox"></div>
+
+        <div class="login__row">
+          <label class="login__check">
+            <input type="checkbox" id="remember" checked />
+            <span>Keep me signed in</span>
+          </label>
+        </div>
+
+        <button class="login__btn" type="submit" id="signinBtn">
+          <span id="btnLabel">Sign in</span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </button>
+
+        <div class="login__divider">or continue with</div>
+
+        <div class="login__sso">
+          <button type="button" class="login__sso-disabled" disabled aria-disabled="true" title="Coming soon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" opacity="0.55" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z M5.84 14.09a6.6 6.6 0 0 1 0-4.18V7.07H2.18a11 11 0 0 0 0 9.86l3.66-2.84z M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" />
+            </svg>
+            <span>Google</span>
+            <span class="login__sso-tbc">TBC</span>
+          </button>
+        </div>
+
+        <div class="login__hint">
+          <strong>Demo</strong> — use any work email + password (6+ chars) to enter the dashboard.
+        </div>
+
+        <div class="login__foot">
+          <span>New to TAP?</span>
+          <a href="signup.html">Create an account →</a>
+        </div>
+      </form>
+    </section>
+
+  </main>
+
+  <script>
+    (function () {
+      const form     = document.getElementById("loginForm");
+      const email    = document.getElementById("email");
+      const password = document.getElementById("password");
+      const btn      = document.getElementById("signinBtn");
+      const btnLabel = document.getElementById("btnLabel");
+      const errorBox = document.getElementById("errorBox");
+      const pwdToggle= document.getElementById("pwdToggle");
+
+      // Restore stored email if "remember me" was on last time
+      const stored = localStorage.getItem("tap.email");
+      if (stored) email.value = stored;
+
+      // Show / hide password
+      pwdToggle.addEventListener("click", () => {
+        const showing = password.type === "text";
+        password.type = showing ? "password" : "text";
+        pwdToggle.textContent = showing ? "Show" : "Hide";
+      });
+
+      // Clear errors on input
+      [email, password].forEach(el => el.addEventListener("input", () => {
+        el.classList.remove("is-error");
+        errorBox.innerHTML = "";
+      }));
+
+      function showError(msg) {
+        errorBox.innerHTML = `<div class="login__error">⚠ ${msg}</div>`;
+      }
+
+      function isEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const eml = email.value.trim();
+        const pwd = password.value;
+        let hasErr = false;
+        email.classList.remove("is-error");
+        password.classList.remove("is-error");
+
+        if (!isEmail(eml)) {
+          email.classList.add("is-error");
+          showError("Please enter a valid work email address.");
+          email.focus();
+          hasErr = true;
+        } else if (pwd.length < 6) {
+          password.classList.add("is-error");
+          showError("Password must be at least 6 characters.");
+          password.focus();
+          hasErr = true;
+        }
+        if (hasErr) return;
+
+        if (document.getElementById("remember").checked) {
+          localStorage.setItem("tap.email", eml);
+        } else {
+          localStorage.removeItem("tap.email");
+        }
+
+        btn.disabled = true;
+        let dots = 0;
+        const timer = setInterval(() => {
+          dots = (dots + 1) % 4;
+          btnLabel.textContent = "Signing in" + ".".repeat(dots);
+        }, 250);
+        setTimeout(() => {
+          clearInterval(timer);
+          window.location.href = "/dashboard/";
+        }, 900);
+      });
+
+      // Forgot password — inline confirmation (no real email sent)
+      document.getElementById("forgotLink").addEventListener("click", (e) => {
+        e.preventDefault();
+        const eml = email.value.trim();
+        if (!isEmail(eml)) {
+          email.classList.add("is-error");
+          showError("Enter your email above first, then click Forgot.");
+          email.focus();
+          return;
+        }
+        errorBox.innerHTML = `<div class="login__error" style="color:var(--ink-2)">→ Reset link sent to <strong>${eml}</strong> (demo).</div>`;
+      });
+    })();
+  </script>
+</body>
+</html>
