@@ -38,7 +38,7 @@ from occupancy.target_store import TargetStore
 
 _ROUTES = [
     ("GET",  r"^/$",                                  "dashboard"),
-    ("GET",  r"^/dashboard$",                         "dashboard"),
+    ("GET",  r"^/dashboard/?$",                       "dashboard"),
     ("GET",  r"^/dashboard/(.+)$",                    "dashboard_static"),
     ("GET",  r"^/api/occupancy/summary$",             "summary"),
     ("GET",  r"^/api/occupancy/daily$",               "daily"),
@@ -133,6 +133,13 @@ def _build_handler(cfg: OccupancyConfig, fixtures_path: str | None) -> type:
                 return
 
             if name == "dashboard":
+                # Redirect /dashboard → /dashboard/ so relative asset paths resolve correctly.
+                if not self._path_only().endswith("/"):
+                    self.send_response(301)
+                    self.send_header("Location", "/dashboard/")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
                 html_path = _DASHBOARD_HTML if _DASHBOARD_HTML.exists() else _DASHBOARD_HTML_LEGACY
                 if html_path.exists():
                     body = html_path.read_bytes()
