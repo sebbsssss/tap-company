@@ -208,7 +208,7 @@ function App() {
 
   return (
     <div className="app">
-      <Sidebar
+      <TopNav
         route={route}
         go={go}
         insightsCount={filteredInsights.length}
@@ -309,11 +309,15 @@ function App() {
 }
 
 // ---------------------------------------------------------------------
-// Sidebar
+// Top navigation bar
 // ---------------------------------------------------------------------
 const ROLE_LABEL = { ops: "Operations", finance: "Finance", gm: "General Manager", admin: "Admin" };
 
-function Sidebar({ route, go, insightsCount, dqCount, role, setRole, firstName, lastName, pendingCount }) {
+function TopNav({ route, go, insightsCount, dqCount, role, setRole, firstName, lastName, pendingCount }) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userWrapRef = useRef(null);
+
   const items = [
     { id: "overview",   label: "Overview",   icon: "◉" },
     { id: "properties", label: "Properties", icon: "▤" },
@@ -323,91 +327,143 @@ function Sidebar({ route, go, insightsCount, dqCount, role, setRole, firstName, 
   if (role === "admin") {
     items.splice(3, 0, { id: "admin", label: "Admin", icon: "◈", count: pendingCount });
   }
+
   const initials = (firstName?.[0] || "?") + (lastName?.[0] || "");
 
-  return (
-    <aside className="sidebar">
-      <div className="sidebar__brand">
-        <span className="brand-wm">TAP</span>
-        <span className="brand-badge">Occupancy</span>
-      </div>
-      <div style={{ padding: "0 20px 18px", marginTop: -16,
-                    fontFamily: "var(--font-mono)", fontSize: 9.5,
-                    letterSpacing: "0.18em", textTransform: "uppercase",
-                    color: "var(--ink-4)" }}>
-        The Assembly Place
-      </div>
+  // Close user menu on outside click
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    function onOutside(e) {
+      if (userWrapRef.current && !userWrapRef.current.contains(e.target)) setUserMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [userMenuOpen]);
 
-      <div className="sidebar__section">Co-Living</div>
-      <nav className="sidebar__nav">
-        {items.map(it => (
-          <button key={it.id}
-                  className={`navitem${route === it.id ? " is-active" : ""}`}
-                  onClick={() => go(it.id)}>
-            <span className="navitem__icon">{it.icon}</span>
-            <span>{it.label}</span>
-            {it.count > 0 && <span className="navitem__count">{it.count}</span>}
+  function goAndClose(id) {
+    go(id);
+    setDrawerOpen(false);
+  }
+
+  return (
+    <>
+      <nav className="topnav" role="navigation" aria-label="Main navigation">
+        {/* Brand */}
+        <div className="topnav__brand">
+          <span className="brand-wm">TAP</span>
+          <span className="brand-badge">Occupancy</span>
+        </div>
+        <div className="topnav__divider" aria-hidden="true" />
+
+        {/* Nav items */}
+        <div className="topnav__nav" role="menubar">
+          {items.map(it => (
+            <button
+              key={it.id}
+              className={`topnav__item${route === it.id ? " is-active" : ""}`}
+              onClick={() => goAndClose(it.id)}
+              role="menuitem"
+              aria-current={route === it.id ? "page" : undefined}
+            >
+              <span className="nav-icon" aria-hidden="true">{it.icon}</span>
+              <span>{it.label}</span>
+              {it.count > 0 && (
+                <span className="nav-badge" aria-label={`${it.count} alerts`}>{it.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="topnav__spacer" />
+
+        <div className="topnav__right">
+          {/* Sync indicator */}
+          <div className="topnav__sync" aria-label="Data synced 2 minutes ago">
+            <span className="topnav__sync-dot" aria-hidden="true" />
+            <span>Zoho · 2 min ago</span>
+          </div>
+
+          {/* User menu */}
+          <div className="topnav__user-wrap" ref={userWrapRef}>
+            <button
+              className="topnav__user-btn"
+              onClick={() => setUserMenuOpen(o => !o)}
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
+              aria-label={`${firstName} ${lastName} — ${ROLE_LABEL[role] || role}. Open user menu`}
+            >
+              <div className="topnav__avatar" style={{
+                background: role === "admin" ? "var(--ink-1)" : "var(--bg-2)",
+                color:      role === "admin" ? "var(--bg-0)" : "var(--ink-2)",
+              }}>{initials}</div>
+              <div className="topnav__user-info">
+                <div className="topnav__user-name">{firstName} {lastName}</div>
+                <div className="topnav__user-role">{ROLE_LABEL[role] || role}</div>
+              </div>
+              <span className="topnav__chevron" aria-hidden="true">▾</span>
+            </button>
+
+            {userMenuOpen && (
+              <div className="dropdown__menu" role="menu" aria-label="User options"
+                   style={{ right: 0, minWidth: 200, top: "calc(100% + 6px)" }}>
+                <div className="dropdown__hint">View as (demo)</div>
+                {Object.entries(ROLE_LABEL).map(([r, label]) => (
+                  <button
+                    key={r}
+                    className="dropdown__item"
+                    role="menuitem"
+                    onClick={() => { setRole(r); setUserMenuOpen(false); }}
+                    style={{ fontWeight: role === r ? 700 : 400 }}
+                  >
+                    {role === r ? "✓ " : "  "}{label}
+                  </button>
+                ))}
+                <div className="dropdown__sep" />
+                <a href="login.html" className="dropdown__item" role="menuitem"
+                   style={{ textDecoration: "none" }}>
+                  Sign out ↗
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile hamburger */}
+          <button
+            className="topnav__mobile-toggle"
+            onClick={() => setDrawerOpen(o => !o)}
+            aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={drawerOpen}
+            aria-controls="mobile-nav-drawer"
+          >
+            {drawerOpen ? "✕" : "☰"}
           </button>
-        ))}
+        </div>
       </nav>
 
-      <div className="sidebar__foot">
-        {/* User identity */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 10,
-                      borderBottom: "1px solid var(--line)" }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: "50%",
-            background: role === "admin" ? "var(--ink-1)" : "var(--bg-2)",
-            color:      role === "admin" ? "var(--bg-0)" : "var(--ink-2)",
-            display: "grid", placeItems: "center",
-            fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700,
-            flexShrink: 0,
-          }}>{initials}</div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ color: "var(--ink-1)", fontSize: 11, fontWeight: 600,
-                          fontFamily: "var(--font-sans)", letterSpacing: 0,
-                          textTransform: "none", whiteSpace: "nowrap",
-                          overflow: "hidden", textOverflow: "ellipsis" }}>
-              {firstName} {lastName}
-            </div>
-            <div style={{ fontSize: 9, letterSpacing: "0.14em", color: "var(--ink-4)" }}>
-              {ROLE_LABEL[role] || role}
-            </div>
-          </div>
-        </div>
-
-        {/* Demo role switcher */}
-        <div style={{ paddingTop: 6 }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.18em", color: "var(--ink-4)",
-                        marginBottom: 6, fontWeight: 700 }}>
-            View as (demo)
-          </div>
-          <select
-            className="select"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            style={{ width: "100%", fontSize: 10, padding: "5px 22px 5px 8px", minHeight: 26 }}>
-            <option value="admin">Admin</option>
-            <option value="gm">General Manager</option>
-            <option value="finance">Finance</option>
-            <option value="ops">Operations</option>
-          </select>
-        </div>
-
-        <div style={{ paddingTop: 10, borderTop: "1px solid var(--line)", marginTop: 8 }}>
-          <div><strong>Source</strong> · Zoho CRM</div>
-          <div>Synced 2 min ago</div>
-        </div>
-
-        <a href="login.html" style={{
-          marginTop: 8, padding: "6px 0", color: "var(--ink-3)",
-          textDecoration: "none", letterSpacing: "0.14em",
-          textTransform: "uppercase", fontWeight: 600, fontSize: 9.5,
-        }}>
-          Sign out ↗
-        </a>
+      {/* Mobile nav drawer */}
+      <div
+        id="mobile-nav-drawer"
+        className={`topnav__drawer${drawerOpen ? " is-open" : ""}`}
+        role="menu"
+        aria-label="Mobile navigation"
+      >
+        {items.map(it => (
+          <button
+            key={it.id}
+            className={`topnav__item${route === it.id ? " is-active" : ""}`}
+            onClick={() => goAndClose(it.id)}
+            role="menuitem"
+            aria-current={route === it.id ? "page" : undefined}
+          >
+            <span className="nav-icon" aria-hidden="true">{it.icon}</span>
+            <span>{it.label}</span>
+            {it.count > 0 && (
+              <span className="nav-badge" aria-label={`${it.count} alerts`}>{it.count}</span>
+            )}
+          </button>
+        ))}
       </div>
-    </aside>
+    </>
   );
 }
 
