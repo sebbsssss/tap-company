@@ -1,23 +1,20 @@
-name: Deploy Ops Portal to Fly.io
+name: Deploy Ops Portal (embedded in tap-company)
 
 on:
   push:
     branches: [main]
     paths:
       - "portals/ops/**"
+      - "Dockerfile"
+      - "Procfile"
+      - "nginx.conf"
+      - "fly.toml"
 
   workflow_dispatch:
-    inputs:
-      environment:
-        description: "Target environment"
-        required: true
-        default: "production"
-        type: choice
-        options: [production]
 
 jobs:
   deploy:
-    name: Deploy tap-ops-portal
+    name: Deploy tap-company with embedded ops portal
     runs-on: ubuntu-latest
 
     steps:
@@ -25,43 +22,7 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Verify app exists
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: Bearer $FLY_API_TOKEN" \
-            "https://api.machines.dev/v1/apps/tap-ops-portal")
-          if [ "$STATUS" != "200" ]; then
-            echo ""
-            echo "ERROR: Fly app 'tap-ops-portal' does not exist yet."
-            echo "The deploy token cannot create new apps (insufficient permissions)."
-            echo ""
-            echo "REQUIRED ONE-TIME SETUP (run with a Fly admin token):"
-            echo "  flyctl apps create tap-ops-portal --org theassemblyplace-web --machines"
-            echo "  flyctl volumes create ops_portal_data --app tap-ops-portal --region sin --size 1 --yes"
-            echo ""
-            echo "After that, re-run this workflow and it will complete automatically."
-            exit 1
-          fi
-          echo "App tap-ops-portal exists — proceeding with deploy."
-
-      - name: Create volume if it doesn't exist
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          if ! flyctl volumes list --app tap-ops-portal 2>&1 | grep -q "ops_portal_data"; then
-            echo "Creating ops_portal_data volume..."
-            flyctl volumes create ops_portal_data \
-              --app tap-ops-portal \
-              --region sin \
-              --size 1 \
-              --yes
-          else
-            echo "Volume ops_portal_data already exists."
-          fi
-
-      - name: Stage Fly secrets
+      - name: Set ops-portal secrets on tap-company
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           CRM_API_KEY: ${{ secrets.CRM_API_KEY }}
@@ -72,12 +33,25 @@ jobs:
             CRM_API_KEY="$CRM_API_KEY" \
             SECRET_KEY="$SECRET_KEY" \
             OPS_PORTAL_ALLOWED_EMAILS="$OPS_PORTAL_ALLOWED_EMAILS" \
-            --app tap-ops-portal \
+            --app tap-company \
             --stage
 
-      - name: Deploy to Fly.io
-        working-directory: portals/ops
+      - name: Deploy to Fly.io (tap-company)
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          flyctl deploy --config fly.toml --remote-only
+          flyctl deploy --config fly.toml --remote-only --app tap-company
+
+      - name: Smoke test /ops-portal/health
+        run: |
+          echo "Waiting 15s for deploy to propagate..."
+          sleep 15
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            --max-time 30 \
+            "https://tap-company.fly.dev/ops-portal/health")
+          echo "Health check: HTTP $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "Ops portal live at https://tap-company.fly.dev/ops-portal"
+          else
+            echo "Health check returned $STATUS — deploy may still be starting"
+          fi

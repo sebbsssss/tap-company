@@ -18,10 +18,10 @@
    CONFIG
    =================================================================== */
 
-const API_BASE        = '';           // relative to origin — FastAPI serves at same host
+const API_BASE        = '/ops-portal'; // portal is mounted at /ops-portal on tap-company
 const REFRESH_MS      = 60_000;       // 60s auto-refresh
 const TOAST_DURATION  = 3_000;        // 3s auto-dismiss
-const USE_MOCK        = true;         // TODO: set false once THE-17304 backend is live
+const USE_MOCK        = false;        // wired to live backend
 
 /* ===================================================================
    MOCK DATA

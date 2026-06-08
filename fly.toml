@@ -9,7 +9,12 @@ primary_region = 'sin'
 [build]
 
 [env]
-  OCCUPANCY_PORT = '8080'
+  OCCUPANCY_PORT = '8082'
+  OPS_PORTAL_BASE_URL = 'https://tap-company.fly.dev/ops-portal'
+  OPS_PORTAL_BOT_ENABLED = 'true'
+  AUDIT_LOG_PATH = '/data/audit/ticket-auto-reply.log'
+  AUTH_DB_PATH = '/data/auth.db'
+  FRONTEND_PATH = '/app/portals/ops/backend/frontend'
 
 [http_service]
   internal_port = 8080
@@ -27,4 +32,4 @@ primary_region = 'sin'
 
 [[vm]]
   size = 'shared-cpu-1x'
-  memory = '256mb'
+  memory = '512mb'
