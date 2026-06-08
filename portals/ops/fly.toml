@@ -1,20 +1,21 @@
-# Staging config — app: tap-ops-portal-staging
-# Deploy: fly deploy --config fly.staging.toml
+# Production config — app: tap-ops-portal
+# Build context: portals/ops/ (includes both backend/ and frontend/)
+# Run: fly deploy --config portals/ops/fly.toml from repo root
 
-app = "tap-ops-portal-staging"
+app = "tap-ops-portal"
 primary_region = "sin"
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = "backend/Dockerfile"
 
 [env]
   OPS_PORTAL_BOT_ENABLED = "true"
-  OPS_PORTAL_BASE_URL = "https://tap-ops-portal-staging.fly.dev"
+  OPS_PORTAL_BASE_URL = "https://tap-ops-portal.fly.dev"
   AUDIT_LOG_PATH = "/data/audit/ticket-auto-reply.log"
   AUTH_DB_PATH = "/data/auth.db"
 
 [mounts]
-  source = "ops_portal_staging_data"
+  source = "ops_portal_data"
   destination = "/data"
 
 [[services]]
@@ -34,8 +35,12 @@ primary_region = "sin"
     port = 443
 
   [[services.http_checks]]
-    interval = "30s"
+    interval = "15s"
     timeout = "10s"
-    grace_period = "10s"
+    grace_period = "5s"
     method = "GET"
     path = "/health"
+
+[metrics]
+  port = 9091
+  path = "/metrics"

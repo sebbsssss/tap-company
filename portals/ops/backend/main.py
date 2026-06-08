@@ -29,7 +29,12 @@ def _bot_enabled() -> bool:
     return os.environ.get("OPS_PORTAL_BOT_ENABLED", "true").lower() not in ("false", "0", "off")
 
 
-FRONTEND_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
+FRONTEND_PATH = os.path.abspath(
+    os.environ.get(
+        "FRONTEND_PATH",
+        os.path.join(os.path.dirname(__file__), "frontend"),
+    )
+)
 
 app = FastAPI(title="TAP Ops Portal", version="1.0.0")
 

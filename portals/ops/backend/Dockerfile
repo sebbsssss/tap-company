@@ -2,15 +2,19 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Build context is portals/ops/ — both backend/ and frontend/ are available.
 # Install deps first (layer-cache friendly)
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Copy backend application code
+COPY backend/ .
 
-# Create audit log directory
-RUN mkdir -p /paperclip/.audit
+# Copy frontend static files so the backend can serve them at /
+COPY frontend/ ./frontend/
+
+# Persistent data directory for audit log + session DB (mounted as Fly volume)
+RUN mkdir -p /data/audit
 
 EXPOSE 8000
 
