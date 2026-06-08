@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TAP — Live Ops Portal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ============================================================
+     AUTH PAGE (shown when no valid session cookie)
+     ============================================================ -->
+<div id="auth-page" class="hidden" role="main" aria-label="Sign in">
+  <div class="auth-card">
+    <div class="auth-logo" aria-hidden="true">
+      <div class="auth-logo-mark">T</div>
+      <span class="auth-logo-text">TAP Ops Portal</span>
+    </div>
+    <h1>Sign in</h1>
+    <p>Enter your TAP email address to receive a one-time sign-in link.</p>
+
+    <div class="auth-input-wrap">
+      <label for="auth-email" class="visually-hidden">Email address</label>
+      <input
+        type="email"
+        id="auth-email"
+        placeholder="you@theassemblyplace.com"
+        autocomplete="email"
+        aria-required="true"
+      />
+      <button
+        id="btn-send-magic-link"
+        class="btn-primary"
+        type="button"
+        aria-live="polite"
+      >Send magic link</button>
+    </div>
+
+    <div id="auth-sent" class="auth-sent hidden" role="alert">
+      Check your email — a sign-in link is on its way.
+    </div>
+    <div id="auth-error" class="auth-error hidden" role="alert"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MAIN APP (shown when authenticated)
+     ============================================================ -->
+<div id="app" class="hidden">
+
+  <!-- Top nav -->
+  <nav class="topnav" role="navigation" aria-label="Top navigation">
+    <div class="topnav-brand" aria-label="TAP Ops Portal">
+      <div class="topnav-brand-mark" aria-hidden="true">T</div>
+      Live Ops
+    </div>
+
+    <div class="topnav-spacer"></div>
+
+    <span class="topnav-refresh" id="refresh-countdown" aria-live="polite" aria-atomic="true"></span>
+
+    <button
+      id="btn-audit-toggle"
+      class="topnav-btn"
+      aria-pressed="false"
+      aria-label="Toggle bot audit dock"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 1a2 2 0 0 1 2 2v.5h.5a2 2 0 0 1 2 2v.5h.5a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h.5V5.5a2 2 0 0 1 2-2H6V3a2 2 0 0 1 2-2zm0 1a1 1 0 0 0-1 1v.5h2V3a1 1 0 0 0-1-1zM5.5 4.5a1 1 0 0 0-1 1V6h7v-.5a1 1 0 0 0-1-1H5.5z"/>
+      </svg>
+      Bot Audit
+    </button>
+  </nav>
+
+  <!-- Filter bar -->
+  <div class="filters-bar" role="search" aria-label="Ticket filters">
+    <label for="filter-service" class="visually-hidden">Service</label>
+    <select id="filter-service" aria-label="Filter by service">
+      <option value="">All Services</option>
+    </select>
+
+    <label for="filter-priority" class="visually-hidden">Priority</label>
+    <select id="filter-priority" aria-label="Filter by priority">
+      <option value="">All Priorities</option>
+      <option value="high">High</option>
+      <option value="mid">Mid</option>
+      <option value="low">Low</option>
+    </select>
+
+    <label for="filter-status" class="visually-hidden">Status</label>
+    <select id="filter-status" aria-label="Filter by status">
+      <option value="">All Statuses</option>
+      <option value="new">New</option>
+      <option value="open">Open</option>
+      <option value="in_progress">In Progress</option>
+      <option value="resolved">Resolved</option>
+      <option value="closed">Closed</option>
+    </select>
+
+    <label for="filter-property" class="visually-hidden">Property</label>
+    <select id="filter-property" aria-label="Filter by property">
+      <option value="">All Properties</option>
+    </select>
+
+    <label for="filter-area" class="visually-hidden">Area</label>
+    <select id="filter-area" aria-label="Filter by area">
+      <option value="">All Areas</option>
+    </select>
+
+    <label for="filter-assignee" class="visually-hidden">Assignee</label>
+    <select id="filter-assignee" aria-label="Filter by assignee">
+      <option value="">All Assignees</option>
+    </select>
+
+    <label for="filter-search" class="visually-hidden">Search tickets</label>
+    <input
+      type="search"
+      id="filter-search"
+      placeholder="Search tickets…"
+      aria-label="Search tickets"
+    />
+
+    <div class="filters-spacer"></div>
+    <span class="tickets-count" id="tickets-count" aria-live="polite"></span>
+    <button class="btn-clear" id="btn-clear-filters" type="button">Clear filters</button>
+  </div>
+
+  <!-- Main content: table area -->
+  <main class="main-content" id="main-content" role="main">
+    <div class="table-wrap">
+
+      <!-- Loading skeleton -->
+      <div id="state-loading" class="hidden" aria-label="Loading tickets" aria-busy="true">
+        <div id="skeleton-rows"></div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="state-empty" class="state-container hidden" role="status">
+        <div class="state-icon" aria-hidden="true">📭</div>
+        <div class="state-title">No tickets found</div>
+        <div class="state-sub">Try clearing the filters or wait for new tickets.</div>
+      </div>
+
+      <!-- Error state -->
+      <div id="state-error" class="state-container hidden" role="alert">
+        <div class="state-icon" aria-hidden="true">⚠️</div>
+        <div class="state-title">Failed to load tickets</div>
+        <div class="state-sub" id="state-error-msg"></div>
+        <button class="btn-secondary" id="btn-retry" type="button">Retry</button>
+      </div>
+
+      <!-- Tickets table -->
+      <table
+        class="tickets-table"
+        id="tickets-table"
+        role="grid"
+        aria-label="Tickets"
+        aria-rowcount="-1"
+      >
+        <thead>
+          <tr>
+            <th class="th-sortable" data-col="id"            scope="col" aria-sort="none">Ticket #</th>
+            <th class="th-sortable" data-col="tenant"        scope="col" aria-sort="none">Tenant</th>
+            <th class="th-sortable" data-col="property"      scope="col" aria-sort="none">Property</th>
+            <th                     data-col="category"      scope="col">Category</th>
+            <th class="th-sortable" data-col="priority"      scope="col" aria-sort="none">Priority</th>
+            <th class="th-sortable" data-col="status"        scope="col" aria-sort="none">Status</th>
+            <th class="th-sortable col-area" data-col="age"  scope="col" aria-sort="none">Age</th>
+            <th class="th-sortable" data-col="last_update"   scope="col" aria-sort="none">Last Update</th>
+            <th class="col-last-action"                      scope="col">Last Action By</th>
+            <th                                              scope="col">Bot Pending?</th>
+            <th                                              scope="col"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody id="tickets-tbody" aria-live="polite"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- ============================================================
+       TICKET DETAIL PANEL (slide-in from right)
+       ============================================================ -->
+  <aside
+    id="detail-panel"
+    class="detail-panel"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Ticket detail"
+    aria-hidden="true"
+  >
+    <div class="detail-header">
+      <div class="detail-header-main">
+        <div class="detail-ticket-id" id="detail-ticket-id"></div>
+        <h2 class="detail-title" id="detail-title"></h2>
+        <div class="detail-meta" id="detail-meta"></div>
+      </div>
+      <button
+        id="btn-close-detail"
+        class="btn-close-panel"
+        type="button"
+        aria-label="Close ticket detail"
+      >×</button>
+    </div>
+
+    <!-- History feed -->
+    <div
+      class="detail-history"
+      id="detail-history"
+      aria-label="Ticket history"
+      aria-live="polite"
+    ></div>
+
+    <!-- Action area -->
+    <div class="detail-actions" id="detail-actions">
+      <!-- Bot draft (shown if pending) -->
+      <div class="bot-draft-actions hidden" id="bot-draft-block" role="region" aria-label="Bot draft pending approval">
+        <div class="bot-draft-label">⚡ Bot draft pending approval</div>
+        <div class="bot-draft-text" id="bot-draft-text"></div>
+        <div class="bot-draft-btns">
+          <button class="btn-success" id="btn-approve-draft" type="button">Approve &amp; Send</button>
+          <button class="btn-secondary" id="btn-edit-draft"  type="button">Edit &amp; Send</button>
+          <button class="btn-danger"   id="btn-reject-draft" type="button">Discard</button>
+        </div>
+        <div class="hidden" id="edit-draft-area">
+          <textarea id="edit-draft-textarea" rows="4" aria-label="Edit draft message"></textarea>
+          <div class="action-pane-footer" style="margin-top:6px">
+            <button class="btn-primary"    id="btn-send-edited-draft" type="button">Send edited</button>
+            <button class="btn-secondary"  id="btn-cancel-edit-draft" type="button">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action tabs -->
+      <div class="action-tabs" role="tablist" aria-label="Ticket actions">
+        <button class="action-tab active" role="tab" data-tab="comment"  aria-selected="true"  aria-controls="tab-comment">Public comment</button>
+        <button class="action-tab"        role="tab" data-tab="note"     aria-selected="false" aria-controls="tab-note">Internal note</button>
+        <button class="action-tab"        role="tab" data-tab="status"   aria-selected="false" aria-controls="tab-status">Change status</button>
+      </div>
+
+      <!-- Tab: public comment -->
+      <div class="action-pane" id="tab-comment" role="tabpanel" aria-label="Post public comment">
+        <label for="comment-textarea" class="visually-hidden">Public comment text</label>
+        <textarea
+          id="comment-textarea"
+          placeholder="Write a public comment visible to the tenant…"
+          aria-required="true"
+        ></textarea>
+        <div class="action-pane-footer">
+          <button class="btn-primary" id="btn-post-comment" type="button">Post comment</button>
+        </div>
+      </div>
+
+      <!-- Tab: internal note -->
+      <div class="action-pane hidden" id="tab-note" role="tabpanel" aria-label="Post internal note">
+        <label for="note-textarea" class="visually-hidden">Internal note text</label>
+        <textarea
+          id="note-textarea"
+          placeholder="Internal note — not visible to the tenant…"
+          aria-required="true"
+        ></textarea>
+        <div class="action-pane-footer">
+          <button class="btn-primary" id="btn-post-note" type="button">Post note</button>
+        </div>
+      </div>
+
+      <!-- Tab: change status -->
+      <div class="action-pane hidden" id="tab-status" role="tabpanel" aria-label="Change ticket status">
+        <label for="status-select" class="visually-hidden">New status</label>
+        <select id="status-select" aria-label="Select new status">
+          <option value="new">New</option>
+          <option value="open">Open</option>
+          <option value="in_progress">In Progress</option>
+          <option value="resolved">Resolved</option>
+          <option value="closed">Closed</option>
+        </select>
+        <div class="action-pane-footer">
+          <button class="btn-primary" id="btn-change-status" type="button">Update status</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============================================================
+       BOT AUDIT DOCK (right-side toggle panel)
+       ============================================================ -->
+  <aside
+    id="audit-dock"
+    class="audit-dock"
+    role="complementary"
+    aria-label="Bot audit log"
+    aria-hidden="true"
+  >
+    <div class="dock-header">
+      <div class="dock-title-row">
+        <span class="dock-title">Bot Audit</span>
+        <button
+          id="btn-close-audit"
+          class="btn-close-panel"
+          type="button"
+          aria-label="Close bot audit dock"
+        >×</button>
+      </div>
+      <div class="dock-filters">
+        <label for="audit-filter-ticket" class="visually-hidden">Filter by ticket</label>
+        <input
+          type="text"
+          id="audit-filter-ticket"
+          placeholder="Filter ticket…"
+          aria-label="Filter audit by ticket"
+        />
+        <label for="audit-filter-rule" class="visually-hidden">Filter by rule</label>
+        <input
+          type="text"
+          id="audit-filter-rule"
+          placeholder="Filter rule…"
+          aria-label="Filter audit by rule"
+        />
+        <label for="audit-filter-tier" class="visually-hidden">Filter by tier</label>
+        <select id="audit-filter-tier" aria-label="Filter audit by tier">
+          <option value="">All Tiers</option>
+          <option value="1">Tier 1</option>
+          <option value="2">Tier 2</option>
+          <option value="3">Tier 3</option>
+        </select>
+      </div>
+    </div>
+    <div class="audit-list" id="audit-list" aria-label="Bot audit entries" aria-live="polite"></div>
+  </aside>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="toast-container" role="log" aria-live="polite" aria-label="Notifications"></div>
+
+</div><!-- /#app -->
+
+<script src="app.js"></script>
+</body>
+</html>
