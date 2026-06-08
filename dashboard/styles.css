@@ -161,6 +161,25 @@ button { font-family: inherit; }
 .main--spacious { padding: 40px 48px 80px; }
 
 /* -----------------------------------------------------------------
+   Data source banner (shown when live API is unavailable)
+----------------------------------------------------------------- */
+.data-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 24px;
+  background: var(--warn-tint);
+  border-bottom: 1px solid rgba(199, 122, 15, 0.22);
+  color: var(--warn);
+  font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+.data-banner__icon { font-size: 12px; }
+
+/* -----------------------------------------------------------------
    Top navigation bar
 ----------------------------------------------------------------- */
 .topnav {

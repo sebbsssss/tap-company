@@ -219,6 +219,7 @@ function App() {
         lastName={lastName}
         pendingCount={pendingCount}
       />
+      {D.usingMock && <DataSourceBanner />}
       <div className={mainCls}>
         {route === "overview" && (
           <OverviewScreen
