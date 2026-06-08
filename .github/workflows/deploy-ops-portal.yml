@@ -19,7 +19,6 @@ jobs:
   deploy:
     name: Deploy tap-ops-portal
     runs-on: ubuntu-latest
-    environment: production
 
     steps:
       - uses: actions/checkout@v4
@@ -27,21 +26,37 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Create app if it doesn't exist
-        working-directory: portals/ops
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          flyctl apps list | grep -q "tap-ops-portal" || \
-            flyctl apps create tap-ops-portal --machines 2>&1 | true
-          flyctl volumes list --app tap-ops-portal 2>/dev/null | grep -q "ops_portal_data" || \
+          # Check if app already exists; create it if not.
+          # --org flag ensures creation in the correct org even if the token
+          # has multi-org access. Errors are surfaced (no swallowing).
+          if ! flyctl apps list 2>&1 | grep -q "tap-ops-portal"; then
+            echo "Creating tap-ops-portal..."
+            flyctl apps create tap-ops-portal \
+              --org theassemblyplace-web \
+              --machines
+          else
+            echo "App tap-ops-portal already exists."
+          fi
+
+      - name: Create volume if it doesn't exist
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if ! flyctl volumes list --app tap-ops-portal 2>&1 | grep -q "ops_portal_data"; then
+            echo "Creating ops_portal_data volume..."
             flyctl volumes create ops_portal_data \
               --app tap-ops-portal \
               --region sin \
               --size 1 \
-              --yes 2>&1 | true
+              --yes
+          else
+            echo "Volume ops_portal_data already exists."
+          fi
 
-      - name: Set Fly secrets
-        working-directory: portals/ops
+      - name: Stage Fly secrets
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           CRM_API_KEY: ${{ secrets.CRM_API_KEY }}
