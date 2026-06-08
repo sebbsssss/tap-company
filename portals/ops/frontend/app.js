@@ -6,10 +6,6 @@
      1. Tickets table (default)
      2. Ticket detail panel (slide-in)
      3. Bot audit dock (right-side toggle)
-
-   TODO: replace MOCK_* constants with live API calls once
-         GET /api/tickets/ and GET /api/audit/recent are deployed.
-         Tracked in THE-17304 (Backend sibling).
    ==================================================================== */
 
 'use strict';
@@ -21,7 +17,7 @@
 const API_BASE        = '';           // relative to origin — FastAPI serves at same host
 const REFRESH_MS      = 60_000;       // 60s auto-refresh
 const TOAST_DURATION  = 3_000;        // 3s auto-dismiss
-const USE_MOCK        = true;         // TODO: set false once THE-17304 backend is live
+const USE_MOCK        = false;
 
 /* ===================================================================
    MOCK DATA
@@ -224,10 +220,6 @@ async function apiFetch(path, opts = {}) {
 }
 
 async function fetchTickets() {
-  if (USE_MOCK) {
-    await new Promise(r => setTimeout(r, 400));
-    return { tickets: MOCK_TICKETS };
-  }
   const params = new URLSearchParams();
   const f = state.filters;
   if (f.service)  params.set('service',  f.service);
@@ -241,53 +233,39 @@ async function fetchTickets() {
 }
 
 async function fetchTicketDetail(id) {
-  if (USE_MOCK) {
-    await new Promise(r => setTimeout(r, 200));
-    return MOCK_DETAIL[id] ?? { id, tenant: id, property: '', category: '',
-      priority: 'low', status: 'open', history: [], bot_draft: null };
-  }
   return apiFetch(`/api/tickets/${encodeURIComponent(id)}`);
 }
 
 async function fetchAudit() {
-  if (USE_MOCK) {
-    await new Promise(r => setTimeout(r, 150));
-    return { actions: MOCK_AUDIT };
-  }
   return apiFetch('/api/audit/recent');
 }
 
 async function postComment(id, text) {
-  if (USE_MOCK) { await new Promise(r => setTimeout(r, 300)); return { ok: true }; }
   return apiFetch(`/api/tickets/${encodeURIComponent(id)}/comment`,
-    { method: 'POST', body: JSON.stringify({ content: text }) });
+    { method: 'POST', body: JSON.stringify({ comment: text }) });
 }
 
 async function postNote(id, text) {
-  if (USE_MOCK) { await new Promise(r => setTimeout(r, 300)); return { ok: true }; }
   return apiFetch(`/api/tickets/${encodeURIComponent(id)}/comment_internal`,
-    { method: 'POST', body: JSON.stringify({ content: text }) });
+    { method: 'POST', body: JSON.stringify({ comment: text }) });
 }
 
 async function postStatus(id, newStatus) {
-  if (USE_MOCK) { await new Promise(r => setTimeout(r, 300)); return { ok: true }; }
   return apiFetch(`/api/tickets/${encodeURIComponent(id)}/status`,
     { method: 'POST', body: JSON.stringify({ status: newStatus }) });
 }
 
-async function postApproveDraft(id) {
-  if (USE_MOCK) { await new Promise(r => setTimeout(r, 300)); return { ok: true }; }
-  return apiFetch(`/api/tickets/${encodeURIComponent(id)}/approve_draft`, { method: 'POST' });
+async function postApproveDraft(id, draftText) {
+  return apiFetch(`/api/tickets/${encodeURIComponent(id)}/approve_draft`,
+    { method: 'POST', body: JSON.stringify({ comment: draftText }) });
 }
 
 async function postEditAndSend(id, editedText) {
-  if (USE_MOCK) { await new Promise(r => setTimeout(r, 300)); return { ok: true }; }
   return apiFetch(`/api/tickets/${encodeURIComponent(id)}/edit_and_send`,
-    { method: 'POST', body: JSON.stringify({ content: editedText }) });
+    { method: 'POST', body: JSON.stringify({ comment: editedText }) });
 }
 
 async function requestMagicLink(email) {
-  if (USE_MOCK) { await new Promise(r => setTimeout(r, 600)); return { ok: true }; }
   return apiFetch(`/auth/magic-link?email=${encodeURIComponent(email)}`);
 }
 
@@ -324,8 +302,7 @@ function showApp() {
 }
 
 function isAuthenticated() {
-  if (USE_MOCK) return true;
-  return Boolean(getCookie('tap_session'));
+  return Boolean(getCookie('ops_session'));
 }
 
 function initAuth() {
@@ -544,7 +521,7 @@ async function loadTickets(isRefresh = false) {
 
   try {
     const data = await fetchTickets();
-    state.tickets = data.tickets ?? [];
+    state.tickets = data.results ?? [];
     state.isLoading = false;
     state.loadError = null;
     populateFilterOptions();
@@ -811,7 +788,8 @@ function initDetailActions() {
 
   /* Approve draft */
   qs('#btn-approve-draft').addEventListener('click', async () => {
-    await withOptimistic(qs('#btn-approve-draft'), () => postApproveDraft(id()), 'Draft approved and sent.');
+    const draftText = state.selectedDetail?.bot_draft || '';
+    await withOptimistic(qs('#btn-approve-draft'), () => postApproveDraft(id(), draftText), 'Draft approved and sent.');
   });
 
   /* Edit draft — show edit area */
@@ -871,7 +849,7 @@ function renderAuditList() {
       <div class="audit-entry-header">
         <span class="audit-ticket-id">${escHtml(a.ticket_id)}</span>
         <span class="audit-rule">${escHtml(a.rule)}</span>
-        <span class="audit-tier">Tier ${escHtml(String(a.tier))}</span>
+        ${a.tier != null ? `<span class="audit-tier">Tier ${escHtml(String(a.tier))}</span>` : ''}
       </div>
       <div class="audit-action-text">${escHtml(a.action)}</div>
       <div class="audit-time">${fmtRelTime(a.ts)}</div>
@@ -893,7 +871,15 @@ function renderAuditList() {
 async function loadAudit() {
   try {
     const data = await fetchAudit();
-    state.auditActions = data.actions ?? [];
+    // Map backend audit format {timestamp, actor, action, ticket, status}
+    // to frontend format {ticket_id, rule, tier, action, ts}
+    state.auditActions = (data.entries ?? []).map(e => ({
+      ticket_id: e.ticket,
+      rule: e.action,
+      tier: null,
+      action: `${e.actor} — ${e.action} (HTTP ${e.status})`,
+      ts: e.timestamp,
+    }));
     applyAuditFilters();
     renderAuditList();
   } catch (err) {
