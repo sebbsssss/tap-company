@@ -25,20 +25,25 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Verify Fly auth and list accessible orgs
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl auth whoami
+          echo "--- Orgs ---"
+          flyctl orgs list
+          echo "--- Apps ---"
+          flyctl apps list || true
+
       - name: Create app if it doesn't exist
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          # Check if app already exists; create it if not.
-          # --org flag ensures creation in the correct org even if the token
-          # has multi-org access. Errors are surfaced (no swallowing).
-          if ! flyctl apps list 2>&1 | grep -q "tap-ops-portal"; then
-            echo "Creating tap-ops-portal..."
-            flyctl apps create tap-ops-portal \
-              --org theassemblyplace-web \
-              --machines
-          else
+          if flyctl apps list 2>&1 | grep -q "tap-ops-portal"; then
             echo "App tap-ops-portal already exists."
+          else
+            echo "Creating tap-ops-portal (no --org flag, uses token default org)..."
+            flyctl apps create tap-ops-portal --machines
           fi
 
       - name: Create volume if it doesn't exist
