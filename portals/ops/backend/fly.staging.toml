@@ -1,0 +1,41 @@
+# Staging config — app: tap-ops-portal-staging
+# Deploy: fly deploy --config fly.staging.toml
+
+app = "tap-ops-portal-staging"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  OPS_PORTAL_BOT_ENABLED = "true"
+  OPS_PORTAL_BASE_URL = "https://tap-ops-portal-staging.fly.dev"
+  AUDIT_LOG_PATH = "/data/audit/ticket-auto-reply.log"
+  AUTH_DB_PATH = "/data/auth.db"
+
+[mounts]
+  source = "ops_portal_staging_data"
+  destination = "/data"
+
+[[services]]
+  internal_port = 8000
+  protocol = "tcp"
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[services.ports]]
+    force_https = true
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.http_checks]]
+    interval = "30s"
+    timeout = "10s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
