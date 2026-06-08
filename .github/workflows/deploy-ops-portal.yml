@@ -26,6 +26,35 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Create app if it doesn't exist
+        working-directory: portals/ops
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl apps list | grep -q "tap-ops-portal" || \
+            flyctl apps create tap-ops-portal --machines 2>&1 | true
+          flyctl volumes list --app tap-ops-portal 2>/dev/null | grep -q "ops_portal_data" || \
+            flyctl volumes create ops_portal_data \
+              --app tap-ops-portal \
+              --region sin \
+              --size 1 \
+              --yes 2>&1 | true
+
+      - name: Set Fly secrets
+        working-directory: portals/ops
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          CRM_API_KEY: ${{ secrets.CRM_API_KEY }}
+          SECRET_KEY: ${{ secrets.OPS_PORTAL_SECRET_KEY }}
+          OPS_PORTAL_ALLOWED_EMAILS: ${{ secrets.OPS_PORTAL_ALLOWED_EMAILS }}
+        run: |
+          flyctl secrets set \
+            CRM_API_KEY="$CRM_API_KEY" \
+            SECRET_KEY="$SECRET_KEY" \
+            OPS_PORTAL_ALLOWED_EMAILS="$OPS_PORTAL_ALLOWED_EMAILS" \
+            --app tap-ops-portal \
+            --stage
+
       - name: Deploy to Fly.io
         working-directory: portals/ops
         env:
