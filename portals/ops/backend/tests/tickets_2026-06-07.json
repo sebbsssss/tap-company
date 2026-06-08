@@ -1,0 +1,765 @@
+{
+  "count": 17756,
+  "next": "https://crm-api.theassemblyplace.com/com/service/tickets/?limit=5&offset=5&ordering=-id",
+  "previous": null,
+  "results": [
+    {
+      "id": 17796,
+      "room": {
+        "id": 2463,
+        "room_type": "Standard",
+        "room_label": "",
+        "number": "4",
+        "recommended_price": "1650.00",
+        "recommended_price_3m": "1650.00",
+        "recommended_price_6m": "1650.00",
+        "cleaning_fee": "100.00",
+        "unit": {
+          "id": 385,
+          "name": "23B",
+          "prop": {
+            "id": 154,
+            "name": "23B LOR 13 GEYLANG",
+            "property_type": "Straight Lease",
+            "address": "23B LORONG 13 GEYLANG SINGAPORE 388666",
+            "default_landlord": {
+              "id": 17,
+              "name": "TAP CO-LIVINGS PTE. LTD",
+              "email": null
+            },
+            "admin_fee": "200.00",
+            "area": "Central",
+            "property_kind": {
+              "id": 1,
+              "code": "CL",
+              "name": "Co Living"
+            }
+          },
+          "default_landlord": {
+            "id": 17,
+            "name": "TAP CO-LIVINGS PTE. LTD",
+            "email": null
+          }
+        },
+        "landlord": {
+          "id": 17,
+          "name": "TAP CO-LIVINGS PTE. LTD",
+          "email": null
+        },
+        "default_rental_account": "UOB"
+      },
+      "unit": null,
+      "category": {
+        "id": 36,
+        "name": "Light Bulb Fuse",
+        "service": "Maintenance",
+        "show_on_mobile": true,
+        "recommended_priority": 4
+      },
+      "visit_period": null,
+      "created": "2026-06-07T21:59:38.307862+08:00",
+      "preferred_date": null,
+      "remarks": "The ceiling light bulb needs to be replaced because it is not working properly.",
+      "date_of_cleaning": null,
+      "cleaning_cost": null,
+      "priority": {
+        "id": 4,
+        "name": "Low"
+      },
+      "cleaner": null,
+      "contractor": null,
+      "completion_date": null,
+      "completed_on": null,
+      "cost_of_goods": null,
+      "cost_goods_description": null,
+      "technicians_ticket": [
+        {
+          "id": 13168,
+          "technician": {
+            "id": 1161,
+            "name": "Placeholder Technician",
+            "role": "House Keeping",
+            "email": "opsm@theassemblyplace.com",
+            "address": "",
+            "contact": null,
+            "set_password_email_sent": "2022-07-25T11:42:50.977589+08:00",
+            "last_login": null,
+            "has_usable_password": false,
+            "is_active": true,
+            "ticket_query_param": null
+          },
+          "created": "2026-06-07T21:59:38.334647+08:00",
+          "modified": "2026-06-07T21:59:38.334647+08:00"
+        }
+      ],
+      "technician_cost": null,
+      "completed_by_in_house_technician": false,
+      "raised_by": {
+        "id": 2936,
+        "name": "Lee Yi Han",
+        "type": "Member",
+        "role": ""
+      },
+      "statuses": [
+        {
+          "id": 45287,
+          "status": "Open",
+          "remarks": "Created by: Lee Yi Han",
+          "date": "2026-06-07",
+          "created": "2026-06-07T21:59:38.341050+08:00",
+          "modified": "2026-06-07T21:59:38.341050+08:00",
+          "modified_by": null
+        }
+      ],
+      "additional_comments": null,
+      "status": "Open",
+      "status_changed_at": "2026-06-07T13:59:38.341050Z",
+      "modified": "2026-06-07T21:59:43.250863+08:00",
+      "modified_by": {
+        "id": 2936,
+        "name": "Lee Yi Han",
+        "email": "yihan_14@hotmail.com",
+        "type": "Member"
+      },
+      "email_last_sent": null,
+      "email_last_sent_by": null,
+      "assisted_by": {
+        "id": 2361,
+        "name": "Low Yuting",
+        "role": "Community Manager",
+        "email": "yuting.low@theassemblyplace.com",
+        "address": "",
+        "contact": "6588058180",
+        "set_password_email_sent": "2023-09-05T09:32:13.188830+08:00",
+        "last_login": "2026-06-07T12:01:24.327113+08:00",
+        "has_usable_password": true,
+        "is_active": true,
+        "ticket_query_param": {
+          "limit": 100,
+          "offset": 0,
+          "search": "emerald park",
+          "category": null,
+          "ordering": "-id",
+          "status__in": null,
+          "completed_by": null,
+          "created__gte": null,
+          "created__lte": null,
+          "priority__name": null,
+          "category__service": "Maintenance"
+        }
+      },
+      "area_type": null
+    },
+    {
+      "id": 17795,
+      "room": {
+        "id": 1818,
+        "room_type": "Master",
+        "room_label": "Queen Bed w Ensuite Bath",
+        "number": "4",
+        "recommended_price": "1500.00",
+        "recommended_price_3m": "1500.00",
+        "recommended_price_6m": "1500.00",
+        "cleaning_fee": "100.00",
+        "unit": {
+          "id": 313,
+          "name": "#02-01",
+          "prop": {
+            "id": 134,
+            "name": "11 MATTAR",
+            "property_type": "Straight Lease",
+            "address": "11 MATTAR RD SINGAPORE 387720",
+            "default_landlord": {
+              "id": 17,
+              "name": "TAP CO-LIVINGS PTE. LTD",
+              "email": null
+            },
+            "admin_fee": "200.00",
+            "area": "Central",
+            "property_kind": {
+              "id": 1,
+              "code": "CL",
+              "name": "Co Living"
+            }
+          },
+          "default_landlord": {
+            "id": 17,
+            "name": "TAP CO-LIVINGS PTE. LTD",
+            "email": null
+          }
+        },
+        "landlord": {
+          "id": 17,
+          "name": "TAP CO-LIVINGS PTE. LTD",
+          "email": null
+        },
+        "default_rental_account": "UOB"
+      },
+      "unit": null,
+      "category": {
+        "id": 22,
+        "name": "Main Light Bulb Fuse",
+        "service": "Maintenance",
+        "show_on_mobile": true,
+        "recommended_priority": 2
+      },
+      "visit_period": null,
+      "created": "2026-06-07T21:56:00.701945+08:00",
+      "preferred_date": null,
+      "remarks": "The outoor light bulb is blinking",
+      "date_of_cleaning": null,
+      "cleaning_cost": null,
+      "priority": {
+        "id": 2,
+        "name": "High"
+      },
+      "cleaner": null,
+      "contractor": null,
+      "completion_date": null,
+      "completed_on": null,
+      "cost_of_goods": null,
+      "cost_goods_description": null,
+      "technicians_ticket": [
+        {
+          "id": 13167,
+          "technician": {
+            "id": 1161,
+            "name": "Placeholder Technician",
+            "role": "House Keeping",
+            "email": "opsm@theassemblyplace.com",
+            "address": "",
+            "contact": null,
+            "set_password_email_sent": "2022-07-25T11:42:50.977589+08:00",
+            "last_login": null,
+            "has_usable_password": false,
+            "is_active": true,
+            "ticket_query_param": null
+          },
+          "created": "2026-06-07T21:56:00.724773+08:00",
+          "modified": "2026-06-07T21:56:00.724773+08:00"
+        }
+      ],
+      "technician_cost": null,
+      "completed_by_in_house_technician": false,
+      "raised_by": {
+        "id": 8060,
+        "name": "Kim Jong Hyun",
+        "type": "Member",
+        "role": ""
+      },
+      "statuses": [
+        {
+          "id": 45286,
+          "status": "Open",
+          "remarks": "Created by: Kim Jong Hyun",
+          "date": "2026-06-07",
+          "created": "2026-06-07T21:56:00.731072+08:00",
+          "modified": "2026-06-07T21:56:00.731072+08:00",
+          "modified_by": null
+        }
+      ],
+      "additional_comments": null,
+      "status": "Open",
+      "status_changed_at": "2026-06-07T13:56:00.731072Z",
+      "modified": "2026-06-07T21:56:06.661070+08:00",
+      "modified_by": {
+        "id": 8060,
+        "name": "Kim Jong Hyun",
+        "email": "joseph.ymx@gmail.com",
+        "type": "Member"
+      },
+      "email_last_sent": null,
+      "email_last_sent_by": null,
+      "assisted_by": {
+        "id": 788,
+        "name": "Fong Guo Rung",
+        "role": "Community Manager",
+        "email": "guorung.fong@theassemblyplace.com",
+        "address": "",
+        "contact": "6581745195",
+        "set_password_email_sent": "2022-04-10T22:21:28.553037+08:00",
+        "last_login": "2026-06-07T14:55:08.395201+08:00",
+        "has_usable_password": true,
+        "is_active": true,
+        "ticket_query_param": {
+          "limit": 100,
+          "offset": 0,
+          "search": null,
+          "category": null,
+          "ordering": "-id",
+          "status__in": null,
+          "completed_by": null,
+          "created__gte": null,
+          "created__lte": null,
+          "priority__name": null,
+          "category__service": null
+        }
+      },
+      "area_type": null
+    },
+    {
+      "id": 17794,
+      "room": {
+        "id": 1328,
+        "room_type": "Junior Master",
+        "room_label": "Queen, Detached Private Bathroom",
+        "number": "1208D",
+        "recommended_price": "2700.00",
+        "recommended_price_3m": "2700.00",
+        "recommended_price_6m": "2500.00",
+        "cleaning_fee": "100.00",
+        "unit": {
+          "id": 155,
+          "name": "#12-08",
+          "prop": {
+            "id": 58,
+            "name": "Ascentia Sky",
+            "property_type": "Straight Lease",
+            "address": "3 ALEXANDRA VIEW SINGAPORE 158749",
+            "default_landlord": {
+              "id": 17,
+              "name": "TAP CO-LIVINGS PTE. LTD",
+              "email": null
+            },
+            "admin_fee": "200.00",
+            "area": "West",
+            "property_kind": {
+              "id": 1,
+              "code": "CL",
+              "name": "Co Living"
+            }
+          },
+          "default_landlord": {
+            "id": 17,
+            "name": "TAP CO-LIVINGS PTE. LTD",
+            "email": null
+          }
+        },
+        "landlord": {
+          "id": 17,
+          "name": "TAP CO-LIVINGS PTE. LTD",
+          "email": null
+        },
+        "default_rental_account": "UOB"
+      },
+      "unit": null,
+      "category": {
+        "id": 30,
+        "name": "Mouldy Wall",
+        "service": "Maintenance",
+        "show_on_mobile": true,
+        "recommended_priority": 3
+      },
+      "visit_period": null,
+      "created": "2026-06-07T20:37:04.656845+08:00",
+      "preferred_date": null,
+      "remarks": "There is dampness and mould developing on the wall and it needs to be checked and treated.",
+      "date_of_cleaning": null,
+      "cleaning_cost": null,
+      "priority": {
+        "id": 3,
+        "name": "Mid"
+      },
+      "cleaner": null,
+      "contractor": null,
+      "completion_date": null,
+      "completed_on": null,
+      "cost_of_goods": null,
+      "cost_goods_description": null,
+      "technicians_ticket": [
+        {
+          "id": 13166,
+          "technician": {
+            "id": 1161,
+            "name": "Placeholder Technician",
+            "role": "House Keeping",
+            "email": "opsm@theassemblyplace.com",
+            "address": "",
+            "contact": null,
+            "set_password_email_sent": "2022-07-25T11:42:50.977589+08:00",
+            "last_login": null,
+            "has_usable_password": false,
+            "is_active": true,
+            "ticket_query_param": null
+          },
+          "created": "2026-06-07T20:37:04.695076+08:00",
+          "modified": "2026-06-07T20:37:04.695076+08:00"
+        }
+      ],
+      "technician_cost": null,
+      "completed_by_in_house_technician": false,
+      "raised_by": {
+        "id": 2305,
+        "name": "John Doe",
+        "type": "Member",
+        "role": ""
+      },
+      "statuses": [
+        {
+          "id": 45285,
+          "status": "Open",
+          "remarks": "Created by: John Doe",
+          "date": "2026-06-07",
+          "created": "2026-06-07T20:37:04.720044+08:00",
+          "modified": "2026-06-07T20:37:04.720044+08:00",
+          "modified_by": null
+        }
+      ],
+      "additional_comments": null,
+      "status": "Open",
+      "status_changed_at": "2026-06-07T12:37:04.720044Z",
+      "modified": "2026-06-07T22:09:33.294044+08:00",
+      "modified_by": {
+        "id": 7995,
+        "name": "Sebastien",
+        "email": "sebastien@clude.io",
+        "type": "Staff"
+      },
+      "email_last_sent": null,
+      "email_last_sent_by": null,
+      "assisted_by": {
+        "id": 1242,
+        "name": "Madeline Teo",
+        "role": "Community Manager",
+        "email": "madeline.teo@theassemblyplace.com",
+        "address": "",
+        "contact": "98398762",
+        "set_password_email_sent": "2022-08-22T11:44:19.869059+08:00",
+        "last_login": "2026-03-22T16:57:54.245654+08:00",
+        "has_usable_password": true,
+        "is_active": false,
+        "ticket_query_param": {
+          "limit": 100,
+          "offset": 0,
+          "search": null,
+          "category": null,
+          "ordering": "-id",
+          "status__in": null,
+          "completed_by": null,
+          "created__gte": null,
+          "created__lte": null,
+          "priority__name": null,
+          "category__service": null
+        }
+      },
+      "area_type": null
+    },
+    {
+      "id": 17793,
+      "room": {
+        "id": 1328,
+        "room_type": "Junior Master",
+        "room_label": "Queen, Detached Private Bathroom",
+        "number": "1208D",
+        "recommended_price": "2700.00",
+        "recommended_price_3m": "2700.00",
+        "recommended_price_6m": "2500.00",
+        "cleaning_fee": "100.00",
+        "unit": {
+          "id": 155,
+          "name": "#12-08",
+          "prop": {
+            "id": 58,
+            "name": "Ascentia Sky",
+            "property_type": "Straight Lease",
+            "address": "3 ALEXANDRA VIEW SINGAPORE 158749",
+            "default_landlord": {
+              "id": 17,
+              "name": "TAP CO-LIVINGS PTE. LTD",
+              "email": null
+            },
+            "admin_fee": "200.00",
+            "area": "West",
+            "property_kind": {
+              "id": 1,
+              "code": "CL",
+              "name": "Co Living"
+            }
+          },
+          "default_landlord": {
+            "id": 17,
+            "name": "TAP CO-LIVINGS PTE. LTD",
+            "email": null
+          }
+        },
+        "landlord": {
+          "id": 17,
+          "name": "TAP CO-LIVINGS PTE. LTD",
+          "email": null
+        },
+        "default_rental_account": "UOB"
+      },
+      "unit": null,
+      "category": {
+        "id": 12,
+        "name": "Power trip",
+        "service": "Maintenance",
+        "show_on_mobile": true,
+        "recommended_priority": 1
+      },
+      "visit_period": null,
+      "created": "2026-06-07T20:27:04.096795+08:00",
+      "preferred_date": null,
+      "remarks": "[TEST \u2014 THE-17298 smoke test for ticket-auto-reply skill \u2014 disregard, will be cleaned up]",
+      "date_of_cleaning": null,
+      "cleaning_cost": null,
+      "priority": {
+        "id": 1,
+        "name": "Immediate"
+      },
+      "cleaner": null,
+      "contractor": null,
+      "completion_date": null,
+      "completed_on": null,
+      "cost_of_goods": null,
+      "cost_goods_description": null,
+      "technicians_ticket": [],
+      "technician_cost": null,
+      "completed_by_in_house_technician": false,
+      "raised_by": {
+        "id": 2305,
+        "name": "John Doe",
+        "type": "Member",
+        "role": ""
+      },
+      "statuses": [
+        {
+          "id": 45284,
+          "status": "Completed",
+          "remarks": "[TEST] Vendor returned, replaced compressor \u2014 closing",
+          "date": null,
+          "created": "2026-06-07T20:29:26.625282+08:00",
+          "modified": "2026-06-07T20:29:26.625282+08:00",
+          "modified_by": {
+            "id": 7995,
+            "name": "Sebastien",
+            "email": "sebastien@clude.io",
+            "type": "Staff"
+          }
+        },
+        {
+          "id": 45283,
+          "status": "In Progress",
+          "remarks": "Auto-progressed after ops approval",
+          "date": null,
+          "created": "2026-06-07T20:28:41.623370+08:00",
+          "modified": "2026-06-07T20:28:41.623370+08:00",
+          "modified_by": {
+            "id": 7995,
+            "name": "Sebastien",
+            "email": "sebastien@clude.io",
+            "type": "Staff"
+          }
+        },
+        {
+          "id": 45282,
+          "status": "Acknowledged",
+          "remarks": "Auto-acknowledged by ops bot",
+          "date": null,
+          "created": "2026-06-07T20:27:45.870353+08:00",
+          "modified": "2026-06-07T20:27:45.870353+08:00",
+          "modified_by": {
+            "id": 7995,
+            "name": "Sebastien",
+            "email": "sebastien@clude.io",
+            "type": "Staff"
+          }
+        },
+        {
+          "id": 45281,
+          "status": "Open",
+          "remarks": "Created by: Sebastien",
+          "date": "2026-06-07",
+          "created": "2026-06-07T20:27:04.116157+08:00",
+          "modified": "2026-06-07T20:27:04.116157+08:00",
+          "modified_by": null
+        }
+      ],
+      "additional_comments": null,
+      "status": "Completed",
+      "status_changed_at": "2026-06-07T12:29:26.625282Z",
+      "modified": "2026-06-07T20:29:30.134278+08:00",
+      "modified_by": {
+        "id": 7995,
+        "name": "Sebastien",
+        "email": "sebastien@clude.io",
+        "type": "Staff"
+      },
+      "email_last_sent": null,
+      "email_last_sent_by": null,
+      "assisted_by": {
+        "id": 1826,
+        "name": "Michael P",
+        "role": "Community Manager",
+        "email": "michael.p@theassemblyplace.com",
+        "address": "",
+        "contact": "91008559",
+        "set_password_email_sent": "2023-03-24T13:48:00.358300+08:00",
+        "last_login": "2025-06-27T01:31:33.867731+08:00",
+        "has_usable_password": true,
+        "is_active": false,
+        "ticket_query_param": {
+          "limit": 100,
+          "offset": 0,
+          "search": "41 feng lai",
+          "category": null,
+          "ordering": "-id",
+          "status__in": null,
+          "completed_by": null,
+          "created__gte": null,
+          "created__lte": null,
+          "priority__name": null,
+          "category__service": "Maintenance"
+        }
+      },
+      "area_type": null
+    },
+    {
+      "id": 17792,
+      "room": {
+        "id": 1838,
+        "room_type": "Master",
+        "room_label": "Queen Bed w Ensuite Bath",
+        "number": "4",
+        "recommended_price": "1900.00",
+        "recommended_price_3m": "1900.00",
+        "recommended_price_6m": "1900.00",
+        "cleaning_fee": "100.00",
+        "unit": {
+          "id": 319,
+          "name": "#04-01",
+          "prop": {
+            "id": 134,
+            "name": "11 MATTAR",
+            "property_type": "Straight Lease",
+            "address": "11 MATTAR RD SINGAPORE 387720",
+            "default_landlord": {
+              "id": 17,
+              "name": "TAP CO-LIVINGS PTE. LTD",
+              "email": null
+            },
+            "admin_fee": "200.00",
+            "area": "Central",
+            "property_kind": {
+              "id": 1,
+              "code": "CL",
+              "name": "Co Living"
+            }
+          },
+          "default_landlord": {
+            "id": 17,
+            "name": "TAP CO-LIVINGS PTE. LTD",
+            "email": null
+          }
+        },
+        "landlord": {
+          "id": 17,
+          "name": "TAP CO-LIVINGS PTE. LTD",
+          "email": null
+        },
+        "default_rental_account": "UOB"
+      },
+      "unit": null,
+      "category": {
+        "id": 33,
+        "name": "Kitchen Appliances Faulty",
+        "service": "Maintenance",
+        "show_on_mobile": true,
+        "recommended_priority": 3
+      },
+      "visit_period": null,
+      "created": "2026-06-07T13:32:53.193487+08:00",
+      "preferred_date": null,
+      "remarks": "microwave has burn smell",
+      "date_of_cleaning": null,
+      "cleaning_cost": null,
+      "priority": {
+        "id": 3,
+        "name": "Mid"
+      },
+      "cleaner": null,
+      "contractor": null,
+      "completion_date": null,
+      "completed_on": null,
+      "cost_of_goods": null,
+      "cost_goods_description": null,
+      "technicians_ticket": [
+        {
+          "id": 13165,
+          "technician": {
+            "id": 1161,
+            "name": "Placeholder Technician",
+            "role": "House Keeping",
+            "email": "opsm@theassemblyplace.com",
+            "address": "",
+            "contact": null,
+            "set_password_email_sent": "2022-07-25T11:42:50.977589+08:00",
+            "last_login": null,
+            "has_usable_password": false,
+            "is_active": true,
+            "ticket_query_param": null
+          },
+          "created": "2026-06-07T13:32:53.219163+08:00",
+          "modified": "2026-06-07T13:32:53.219163+08:00"
+        }
+      ],
+      "technician_cost": null,
+      "completed_by_in_house_technician": false,
+      "raised_by": {
+        "id": 6113,
+        "name": "Jessie Lee Sze Chiao",
+        "type": "Member",
+        "role": ""
+      },
+      "statuses": [
+        {
+          "id": 45280,
+          "status": "Open",
+          "remarks": "Created by: Jessie Lee Sze Chiao",
+          "date": "2026-06-07",
+          "created": "2026-06-07T13:32:53.250606+08:00",
+          "modified": "2026-06-07T13:32:53.250606+08:00",
+          "modified_by": null
+        }
+      ],
+      "additional_comments": null,
+      "status": "Open",
+      "status_changed_at": "2026-06-07T05:32:53.250606Z",
+      "modified": "2026-06-07T13:32:58.027935+08:00",
+      "modified_by": {
+        "id": 6113,
+        "name": "Jessie Lee Sze Chiao",
+        "email": "jessieleesc41@gmail.com",
+        "type": "Member"
+      },
+      "email_last_sent": null,
+      "email_last_sent_by": null,
+      "assisted_by": {
+        "id": 2417,
+        "name": "Elijah Tan",
+        "role": "Community Manager",
+        "email": "elijah.tan@theassemblyplace.com",
+        "address": "",
+        "contact": "6580254458",
+        "set_password_email_sent": "2023-09-25T13:37:06.549599+08:00",
+        "last_login": "2026-06-06T17:34:34.590268+08:00",
+        "has_usable_password": true,
+        "is_active": true,
+        "ticket_query_param": {
+          "limit": 100,
+          "offset": 0,
+          "search": "60 wilkie 201",
+          "category": null,
+          "ordering": "-id",
+          "status__in": null,
+          "completed_by": null,
+          "created__gte": null,
+          "created__lte": null,
+          "priority__name": null,
+          "category__service": "Maintenance"
+        }
+      },
+      "area_type": null
+    }
+  ]
+}
