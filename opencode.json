@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config-schema.json",
+  "mcp": {
+    "google": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@presto-ai/google-workspace-mcp@1.0.12"],
+      "env": {
+        "GOOGLE_CLIENT_ID": "${GOOGLE_CLIENT_ID}",
+        "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
+        "GOOGLE_REFRESH_TOKEN": "${GOOGLE_REFRESH_TOKEN}"
+      }
+    }
+  }
+}
