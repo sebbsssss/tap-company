@@ -21,7 +21,8 @@ tap-company/
 │   ├── xero-export-guide.md         # Where in Xero each template's numbers come from
 │   ├── paperclip-quickstart-setup.md# How to surface the quickstart inside Paperclip's UI
 │   ├── deployment-vm.md             # Cloud VM setup (Ubuntu + Paperclip + Claude Code + Xero Custom Connection)
-│   └── mcp-setup.md                 # Which MCPs to install + claude mcp add commands
+│   ├── mcp-setup.md                 # Which MCPs to install + claude mcp add commands
+│   └── google-mcp.md                # Google Workspace MCP: agent scope table + one-time OAuth setup
 │
 ├── agents/
 │   ├── ceo/                         # Orchestrator — delegates to specialists, watches budgets
@@ -133,3 +134,14 @@ These are flagged in the agent instructions so the agents themselves surface the
 - API keys / Twilio credentials / Xero tokens — set via Paperclip UI per-agent after import
 - Notion / Slack / Drive connectors — assume those MCPs are available at the adapter level; not configured here
 - Tasks / issues — start fresh; let the agents discover real work
+
+---
+
+**For Sebastien — your 5-minute steps after this PR merges:**
+
+1. Run `node scripts/mint-google-refresh-token.js <path-to-client_secret_json>` locally. Sign in as the TAP service Google account when the browser opens. Copy the printed refresh token.
+2. For each agent in the table in [`docs/google-mcp.md`](./docs/google-mcp.md), go to Paperclip > Agent > Configuration tab > Environment variables and add (all sealed):
+   - `GOOGLE_CLIENT_ID` = (from the client_secret JSON, `client_id` field)
+   - `GOOGLE_CLIENT_SECRET` = (from the client_secret JSON, `client_secret` field)
+   - `GOOGLE_REFRESH_TOKEN` = (from step 1)
+3. Test by asking Finance Lead to draft a Gmail to yourself with subject "MCP test". If the draft appears in your Gmail Drafts folder, the connection works.
