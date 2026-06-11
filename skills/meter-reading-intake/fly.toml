@@ -11,7 +11,7 @@ app = 'tap-meter-intake'
 primary_region = 'sin'
 
 [build]
-  dockerfile = 'skills/meter-reading-intake/Dockerfile'
+  dockerfile = 'Dockerfile'
 
 [env]
   # Default to dry-run; flip to 'false' once Zernio account is topped up + tested

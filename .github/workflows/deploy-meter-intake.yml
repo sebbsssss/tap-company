@@ -67,10 +67,12 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_METER_INTAKE_TOKEN }}
         run: |
+          # Deploy from the skill directory so Dockerfile COPY paths resolve correctly
           flyctl deploy \
-            --config skills/meter-reading-intake/fly.toml \
+            --config fly.toml \
             --remote-only \
             --app tap-meter-intake
+        working-directory: skills/meter-reading-intake
 
       # Register Zernio webhook pointing at the live receiver URL (idempotent)
       - name: Register Zernio webhook
