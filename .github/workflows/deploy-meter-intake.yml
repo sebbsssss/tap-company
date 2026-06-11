@@ -30,9 +30,17 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          flyctl apps list | grep -q "tap-meter-intake" \
-            && echo "App already exists" \
-            || flyctl apps create tap-meter-intake
+          if flyctl apps list | grep -q "tap-meter-intake"; then
+            echo "App already exists"
+          else
+            # Resolve org slug from the sibling tap-company app (same account)
+            ORG=$(flyctl apps list --json | python3 -c \
+              "import sys,json; apps=json.load(sys.stdin); \
+               match=[a for a in apps if a.get('Name')=='tap-company']; \
+               print(match[0]['Organization']['Slug'] if match else apps[0]['Organization']['Slug'])")
+            echo "Creating tap-meter-intake in org: $ORG"
+            flyctl apps create tap-meter-intake --org "$ORG"
+          fi
 
       # Create persistent volume (idempotent — tolerate "already exists")
       - name: Create data volume (first time only)
