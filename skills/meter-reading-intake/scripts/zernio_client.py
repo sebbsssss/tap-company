@@ -51,7 +51,7 @@ def _request(method: str, path: str, body: Optional[dict] = None, timeout: int =
 
 def list_webhooks() -> list[dict]:
     """Return existing webhook registrations."""
-    result = _request("GET", "/webhooks")
+    result = _request("GET", "/webhooks/settings")
     return result if isinstance(result, list) else result.get("data", [])
 
 
@@ -68,10 +68,10 @@ def ensure_webhook(
         if w.get("url") == callback_url:
             _log("info", "webhook_already_registered", url=callback_url)
             return w
-    body: dict = {"url": callback_url, "events": events}
+    body: dict = {"name": "tap-meter-intake", "url": callback_url, "events": events}
     if secret:
         body["secret"] = secret
-    result = _request("POST", "/webhooks", body)
+    result = _request("POST", "/webhooks/settings", body)
     _log("info", "webhook_registered", url=callback_url, result=str(result)[:120])
     return result
 
