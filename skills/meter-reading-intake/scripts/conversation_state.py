@@ -5,18 +5,21 @@ Each file is keyed by contact_id and TTL-pruned after 24 h of inactivity.
 
 State schema:
   {
-    "contact_id": str,          -- Zernio conversation.contactId (state key)
-    "conversation_id": str,     -- Zernio conversation.id (needed for replies)
-    "account_id": str,          -- Zernio account.id (needed for replies)
+    "contact_id": str,              -- Zernio conversation.contactId (state key)
+    "conversation_id": str,         -- Zernio conversation.id (needed for replies)
+    "account_id": str,              -- Zernio account.id (needed for replies)
     "resolved": {
       "property": str|null,
       "utility_type": str|null,
-      "reading_date": str|null   -- ISO date string
+      "reading_date": str|null      -- ISO date string
     },
+    "property_unverified": bool,    -- True when property accepted after loop guard
+    "property_ask_count": int,      -- how many times we have asked 'Which property?'
+    "fuzzy_property_suggestion": str|null,  -- near-miss candidate pending YES confirm
     "pending_image_url": str|null,
     "pending_mime": str|null,
-    "awaiting_retake": bool,     -- True when we asked for a clearer photo
-    "last_activity": str         -- ISO datetime (UTC)
+    "awaiting_retake": bool,        -- True when we asked for a clearer photo
+    "last_activity": str            -- ISO datetime (UTC)
   }
 """
 
@@ -90,6 +93,9 @@ def new_state(contact_id: str, conversation_id: str, account_id: str) -> dict:
             "utility_type": None,
             "reading_date": None,
         },
+        "property_unverified": False,
+        "property_ask_count": 0,
+        "fuzzy_property_suggestion": None,
         "pending_image_url": None,
         "pending_mime": "image/jpeg",
         "awaiting_retake": False,
@@ -98,13 +104,23 @@ def new_state(contact_id: str, conversation_id: str, account_id: str) -> dict:
 
 
 def merge_parsed(state: dict, parsed: dict) -> dict:
-    """Merge freshly-parsed caption fields into state (don't overwrite already-resolved)."""
+    """Merge freshly-parsed caption fields into state (don't overwrite already-resolved).
+
+    Also propagates fuzzy_suggestion from parsed into state when no exact property found.
+    """
     for field in ("property", "utility_type"):
         if state["resolved"][field] is None and parsed.get(field) is not None:
             state["resolved"][field] = parsed[field]
+            if field == "property":
+                # Exact match found — clear any pending fuzzy state
+                state["fuzzy_property_suggestion"] = None
+                state["property_ask_count"] = 0
     if state["resolved"]["reading_date"] is None and parsed.get("reading_date") is not None:
         rd = parsed["reading_date"]
         state["resolved"]["reading_date"] = rd.isoformat() if isinstance(rd, date) else rd
+    # Store fuzzy suggestion when property still unresolved
+    if state["resolved"]["property"] is None and parsed.get("fuzzy_suggestion"):
+        state["fuzzy_property_suggestion"] = parsed["fuzzy_suggestion"]
     return state
 
 
@@ -131,15 +147,19 @@ def is_complete(state: dict) -> bool:
 # ---------------------------------------------------------------------------
 
 FIELD_PROMPTS: dict[str, str] = {
-    "property": "Which property is this for? (e.g. 18JJ, 18Penhas, 51MR, or TLKR)",
+    "property": "Which property is this for? (e.g. 18JJ, 18Penhas, 51MR, MILL@32, TLKR)",
     "utility_type": "Is this electricity, water, or gas?",
     "reading_date": "What date is this reading for? (e.g. today, 11/6, or 2026-06-11)",
 }
 
 
-def next_question(missing: list[str]) -> str:
+def next_question(missing: list[str], state: Optional[dict] = None) -> str:
     """Return the most important single question to ask next."""
     for field in ("property", "utility_type", "reading_date"):
         if field in missing:
+            if field == "property" and state is not None:
+                suggestion = state.get("fuzzy_property_suggestion")
+                if suggestion:
+                    return f"Did you mean *{suggestion}*? Reply YES to confirm, or send the correct property name."
             return FIELD_PROMPTS[field]
     return FIELD_PROMPTS[missing[0]]

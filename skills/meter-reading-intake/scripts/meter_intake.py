@@ -231,8 +231,17 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
 
     # Merge any new caption fields
     if text:
-        parsed = parse_caption(text)
-        state = cs.merge_parsed(state, parsed)
+        # YES confirmation for fuzzy property suggestion
+        _AFFIRMATIVE = {"yes", "y", "yep", "yeah", "correct", "right", "ok", "okay", "confirm", "si"}
+        if (state.get("fuzzy_property_suggestion")
+                and state["resolved"]["property"] is None
+                and text.lower().strip() in _AFFIRMATIVE):
+            state["resolved"]["property"] = state["fuzzy_property_suggestion"]
+            state["fuzzy_property_suggestion"] = None
+            state["property_ask_count"] = 0
+        else:
+            parsed = parse_caption(text)
+            state = cs.merge_parsed(state, parsed)
 
     # Store image if provided and none cached yet
     if has_image and not state.get("pending_image_url"):
@@ -242,7 +251,18 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
     # --- ask for missing fields one at a time ---
     missing = cs.missing_fields(state)
     if missing:
-        question = cs.next_question(missing)
+        # Loop guard: after 2 property re-asks, accept raw text and flag as unverified
+        if "property" in missing and state.get("property_ask_count", 0) >= 2 and text:
+            state["resolved"]["property"] = text.strip().upper()
+            state["property_unverified"] = True
+            state["fuzzy_property_suggestion"] = None
+            state["property_ask_count"] = 0
+            missing = cs.missing_fields(state)
+
+    if missing:
+        question = cs.next_question(missing, state)
+        if "property" in missing:
+            state["property_ask_count"] = state.get("property_ask_count", 0) + 1
         cs.save(state)
         send_reply(conversation_id, account_id, question, dry_run=dry_run)
         return
@@ -309,9 +329,12 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
     else:
         delta_str = "? (first reading for this meter)"
 
-    confirmation = f"Logged: {row['property']} {row['utility_type']} {delta_str} (reading: {current_reading})"
+    unverified = state.get("property_unverified", False)
+    unverified_note = " *(property unverified — please confirm)*" if unverified else ""
+    confirmation = f"Logged: {row['property']} {row['utility_type']} {delta_str} (reading: {current_reading}){unverified_note}"
     send_reply(conversation_id, account_id, confirmation, dry_run=dry_run)
-    _log("info", "reading_logged", property=row["property"], utility_type=row["utility_type"], delta=delta)
+    _log("info", "reading_logged", property=row["property"], utility_type=row["utility_type"],
+         delta=delta, property_unverified=unverified)
 
 
 @app.post("/webhook/zernio")
