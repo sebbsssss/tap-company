@@ -1,5 +1,9 @@
 name: Deploy tap-meter-intake (meter reading pipeline)
 
+# Requires GitHub secret: FLY_METER_INTAKE_TOKEN
+# Generate once: flyctl tokens create deploy -a tap-meter-intake --expiry 8760h
+# FLY_API_TOKEN is scoped to tap-company and cannot be reused here.
+
 on:
   push:
     branches: [main]
@@ -25,35 +29,19 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      # Verify the app exists — it must be pre-created once by an org-admin:
-      #   flyctl apps create tap-meter-intake --org theassemblyplace-web
-      # The deploy token (FLY_API_TOKEN) is scoped to tap-company and cannot create apps.
-      - name: Verify Fly app exists
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          if flyctl apps list | grep -q "tap-meter-intake"; then
-            echo "App tap-meter-intake found — proceeding."
-          else
-            echo "::error::App tap-meter-intake does not exist. Create it once with:"
-            echo "::error::  flyctl apps create tap-meter-intake --org theassemblyplace-web"
-            exit 1
-          fi
-
-      # Create persistent volume (idempotent — tolerate "already exists")
+      # Create persistent volume (idempotent)
       - name: Create data volume (first time only)
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_METER_INTAKE_TOKEN }}
         run: |
           flyctl volumes list -a tap-meter-intake | grep -q "meter_data" \
             && echo "Volume already exists" \
             || flyctl volumes create meter_data -a tap-meter-intake -r sin --size 1 --yes
 
-      # Set all secrets. ZERNIO_API_KEY and PAPERCLIP_SERVICE_KEY must be in GitHub secrets.
-      # ALLOWLISTED_NUMBERS can be empty until ops team provides the E.164 numbers.
+      # Set all runtime secrets on the Fly app
       - name: Set Fly secrets
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_METER_INTAKE_TOKEN }}
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PAPERCLIP_SERVICE_KEY: ${{ secrets.PAPERCLIP_SERVICE_KEY }}
@@ -77,15 +65,15 @@ jobs:
 
       - name: Deploy to Fly.io
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_METER_INTAKE_TOKEN }}
         run: |
           flyctl deploy \
             --config skills/meter-reading-intake/fly.toml \
             --remote-only \
             --app tap-meter-intake
 
-      # Register Zernio webhook pointing to the live receiver URL
-      - name: Register Zernio webhook (idempotent)
+      # Register Zernio webhook pointing at the live receiver URL (idempotent)
+      - name: Register Zernio webhook
         run: |
           echo "Waiting 20s for app to start..."
           sleep 20
@@ -97,13 +85,14 @@ jobs:
             curl -s -X POST https://tap-meter-intake.fly.dev/admin/register-webhook \
               -H "Content-Type: application/json" \
               -d '{"callback_url":"https://tap-meter-intake.fly.dev/webhook/zernio"}' \
-              | python3 -c "import sys,json; d=json.load(sys.stdin); print('Webhook:', d)"
+              | python3 -c "import sys,json; d=json.load(sys.stdin); print('Webhook result:', d)"
           else
-            echo "App not healthy yet — webhook registration skipped. Run manually after stabilisation."
+            echo "App not healthy yet — webhook registration skipped. Run manually:"
+            echo "  curl -X POST https://tap-meter-intake.fly.dev/admin/register-webhook -H 'Content-Type: application/json' -d '{\"callback_url\":\"https://tap-meter-intake.fly.dev/webhook/zernio\"}'"
           fi
 
-      - name: Smoke test
+      - name: Smoke test /healthz
         run: |
           curl -sf "https://tap-meter-intake.fly.dev/healthz" \
-            && echo "tap-meter-intake is live" \
-            || echo "Health check failed — check fly logs -a tap-meter-intake"
+            && echo "tap-meter-intake is live ✓" \
+            || (echo "Health check failed — check: fly logs -a tap-meter-intake" && exit 1)
