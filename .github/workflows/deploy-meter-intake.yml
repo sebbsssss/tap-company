@@ -53,8 +53,8 @@ jobs:
             PAPERCLIP_ISSUE_ID="f3238286-cf83-4d72-93f2-5c3ff8c98200" \
             PAPERCLIP_COMPANY_ID="6daad5d4-11c8-4852-b69d-c560c0b78cde" \
             WEBHOOK_CALLBACK_URL="https://tap-meter-intake.fly.dev/webhook/zernio" \
-            ERWAN_CONTACT_ID="${{ secrets.ERWAN_CONTACT_ID }}" \
-            ERWAN_INBOX_ID="${{ secrets.ERWAN_INBOX_ID }}" \
+            IRWAN_CONTACT_ID="${{ secrets.IRWAN_CONTACT_ID }}" \
+            IRWAN_INBOX_ID="${{ secrets.IRWAN_INBOX_ID }}" \
             ALLOWLISTED_NUMBERS="$ALLOWLISTED_NUMBERS" \
             WEBHOOK_SECRET="$WEBHOOK_SECRET" \
             --app tap-meter-intake \

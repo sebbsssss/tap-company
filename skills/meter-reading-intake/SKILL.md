@@ -17,7 +17,7 @@ Helmy → WhatsApp → Zernio (+1 856-447-1082)
   → reply: "Logged: <property> <type> +<delta>"
 ```
 
-18:00 SGT daily: `python3 daily_digest.py --send live` → digest to Erwan via Zernio
+18:00 SGT daily: `python3 daily_digest.py --send live` → digest to Irwan via Zernio
 
 ## Scripts
 
@@ -28,7 +28,7 @@ Helmy → WhatsApp → Zernio (+1 856-447-1082)
 | `caption_parser.py` | Parses WhatsApp captions → property / utility_type / date |
 | `meter_calculator.py` | Claude vision → `{reading, meter_id, confidence}` |
 | `utility_log.py` | xlsx writer — one workbook per month, one sheet per property |
-| `daily_digest.py` | 18:00 SGT digest to Erwan (route vs. logged comparison) |
+| `daily_digest.py` | 18:00 SGT digest to Irwan (route vs. logged comparison) |
 
 ## Inputs
 
@@ -59,8 +59,8 @@ Columns: `date, property, meter_id, utility_type, reading, prev_reading, delta, 
 | `METER_INTAKE_DRY_RUN` | No | `true` (default) — set `false` to enable live sends |
 | `UTILITY_LOG_DIR` | No | Override xlsx storage dir (default `/data/utility-logs`) |
 | `WEBHOOK_CALLBACK_URL` | No | Used by `/admin/register-webhook` |
-| `ERWAN_CONTACT_ID` | For digest | Zernio contact ID for Erwan |
-| `ERWAN_INBOX_ID` | For digest | Zernio inbox ID |
+| `IRWAN_CONTACT_ID` | For digest | Zernio contact ID for Irwan |
+| `IRWAN_INBOX_ID` | For digest | Zernio inbox ID |
 
 ## Deploy
 
@@ -73,8 +73,8 @@ fly secrets set -a tap-meter-intake \
   ZERNIO_API_KEY=<value> \
   ANTHROPIC_API_KEY=<value> \
   METER_INTAKE_DRY_RUN=false \
-  ERWAN_CONTACT_ID=<zernio_contact_id> \
-  ERWAN_INBOX_ID=<zernio_inbox_id> \
+  IRWAN_CONTACT_ID=<zernio_contact_id> \
+  IRWAN_INBOX_ID=<zernio_inbox_id> \
   WEBHOOK_CALLBACK_URL=https://tap-meter-intake.fly.dev/webhook/zernio
 
 # Create volume

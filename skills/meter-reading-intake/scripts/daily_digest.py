@@ -4,11 +4,11 @@ Summarises readings logged today vs expected route:
   Mon/Wed → campus properties (TLKR)
   Tue/Thu → off-campus properties (co-livings)
 
-Sends via Zernio to Erwan. Use --send live to actually fire; default is dry-run.
+Sends via Zernio to Irwan. Use --send live to actually fire; default is dry-run.
 
 Env vars:
-  ERWAN_CONTACT_ID   — Zernio contact ID for Erwan (required for live sends)
-  ERWAN_INBOX_ID     — Zernio inbox ID (required for live sends)
+  IRWAN_CONTACT_ID   — Zernio contact ID for Irwan (required for live sends)
+  IRWAN_INBOX_ID     — Zernio inbox ID (required for live sends)
 """
 
 from __future__ import annotations
@@ -104,20 +104,20 @@ def build_digest(day: Optional[date] = None) -> str:
 
 
 def send_digest(dry_run: bool = True, day: Optional[date] = None) -> None:
-    contact_id = os.environ.get("ERWAN_CONTACT_ID", "")
-    inbox_id = os.environ.get("ERWAN_INBOX_ID", "")
+    contact_id = os.environ.get("IRWAN_CONTACT_ID", "")
+    inbox_id = os.environ.get("IRWAN_INBOX_ID", "")
 
     if not dry_run and (not contact_id or not inbox_id):
-        _log("error", "ERWAN_CONTACT_ID and ERWAN_INBOX_ID must be set for live sends")
-        raise RuntimeError("ERWAN_CONTACT_ID / ERWAN_INBOX_ID not set")
+        _log("error", "IRWAN_CONTACT_ID and IRWAN_INBOX_ID must be set for live sends")
+        raise RuntimeError("IRWAN_CONTACT_ID / IRWAN_INBOX_ID not set")
 
     text = build_digest(day)
     _log("info", "daily_digest_ready", dry_run=dry_run, length=len(text))
-    send_reply(inbox_id or "ops", contact_id or "erwan", text, dry_run=dry_run)
+    send_reply(inbox_id or "ops", contact_id or "irwan", text, dry_run=dry_run)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Send daily meter-reading digest to Erwan")
+    parser = argparse.ArgumentParser(description="Send daily meter-reading digest to Irwan")
     parser.add_argument("--send", choices=["dry", "live"], default="dry")
     parser.add_argument("--date", help="Override date (YYYY-MM-DD)", default=None)
     args = parser.parse_args()

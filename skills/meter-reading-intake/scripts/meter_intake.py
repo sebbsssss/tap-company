@@ -12,8 +12,8 @@ Env vars:
   UTILITY_LOG_DIR            — override xlsx storage path (default /data/utility-logs)
   METER_STATE_DIR            — conversation state dir (default /data/meter-intake-state)
   WEBHOOK_CALLBACK_URL       — used by /admin/register-webhook if not passed in body
-  ERWAN_CONTACT_ID           — Zernio contact for daily digest sends
-  ERWAN_INBOX_ID             — Zernio inbox for daily digest sends
+  IRWAN_CONTACT_ID           — Zernio contact for daily digest sends
+  IRWAN_INBOX_ID             — Zernio inbox for daily digest sends
   PAPERCLIP_API_URL          — for xlsx attachment upload
   PAPERCLIP_API_KEY          — for xlsx attachment upload
   PAPERCLIP_ISSUE_ID         — issue to attach xlsx to (set to THE-17390's id)
