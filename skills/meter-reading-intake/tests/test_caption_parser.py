@@ -84,7 +84,8 @@ def test_ask_for_missing_message():
 def test_full_fixture_parseable():
     data = json.loads((FIXTURE_DIR / "zernio_message_received_2026-06-11.json").read_text())
     assert data["event"] == "message.received"
-    parsed = parse_caption(data["caption"])
+    text = data["message"]["text"]
+    parsed = parse_caption(text)
     assert parsed["property"] == "18 JALAN JINTAN"
     assert parsed["utility_type"] == "electricity"
     assert parsed["reading_date"] == date(2026, 6, 11)
@@ -93,5 +94,6 @@ def test_full_fixture_parseable():
 
 def test_incomplete_fixture_has_missing():
     data = json.loads((FIXTURE_DIR / "zernio_message_incomplete_2026-06-11.json").read_text())
-    parsed = parse_caption(data["caption"])
+    text = data["message"]["text"]
+    parsed = parse_caption(text)
     assert "property" in missing_fields(parsed)

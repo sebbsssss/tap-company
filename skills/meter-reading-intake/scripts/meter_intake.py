@@ -66,35 +66,40 @@ def _verify_hmac(raw_body: bytes, secret: str, sig_header: str) -> bool:
     return hmac.compare_digest(expected, sig_header.lower())
 
 
-def _sender_phone(event: dict) -> str | None:
-    """Extract the sender's E.164 phone number from a Zernio event."""
-    sender = event.get("sender") or {}
-    return sender.get("phone") or event.get("sender_phone") or None
+def _parse_event(event: dict) -> dict:
+    """Extract normalized fields from a Zernio message.received event.
 
-
-def _contact_id(event: dict) -> str:
-    return (
-        event.get("contact_id")
-        or (event.get("sender") or {}).get("id")
-        or ""
-    )
-
-
-def _inbox_id(event: dict) -> str:
-    return event.get("inbox_id") or ""
-
-
-def _attachments(event: dict) -> list[dict]:
-    return event.get("attachments") or []
+    Zernio payload shape (top-level):
+      message.senderPhoneNumber, message.text, message.attachments[]
+      conversation.id, conversation.contactId
+      account.id
+    """
+    msg = event.get("message") or {}
+    conv = event.get("conversation") or {}
+    acc = event.get("account") or {}
+    return {
+        "phone": msg.get("senderPhoneNumber") or None,
+        "contact_id": conv.get("contactId") or msg.get("senderId") or "",
+        "conversation_id": conv.get("id") or "",
+        "account_id": acc.get("id") or "",
+        "text": (msg.get("text") or "").strip(),
+        "attachments": msg.get("attachments") or [],
+    }
 
 
 def _first_image(attachments: list[dict]) -> tuple[str | None, str]:
     """Return (url, mime_type) of first image attachment, or (None, 'image/jpeg')."""
     for att in attachments:
-        att_type = (att.get("content_type") or att.get("type") or "").lower()
+        att_type = (
+            att.get("mimeType") or att.get("type") or att.get("content_type") or ""
+        ).lower()
+        url = att.get("url") or att.get("data_url") or ""
         if "image" in att_type:
-            url = att.get("data_url") or att.get("url") or ""
             mime = "image/png" if "png" in att_type else "image/jpeg"
+            return url, mime
+        # fallback: infer from extension when type is missing
+        if url.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".webp")):
+            mime = "image/png" if url.lower().endswith(".png") else "image/jpeg"
             return url, mime
     return None, "image/jpeg"
 
@@ -139,30 +144,42 @@ async def admin_register_webhook(request: Request) -> JSONResponse:
 
 async def _process_message(event: dict, dry_run: bool) -> None:  # noqa: C901
     """Background task — process one message.received event with conversation state."""
-    phone = _sender_phone(event)
-    contact_id = _contact_id(event)
-    inbox_id = _inbox_id(event)
-    text = (event.get("caption") or event.get("content") or "").strip()
-    attachments = _attachments(event)
+    try:
+        await _process_message_inner(event, dry_run)
+    except Exception as exc:
+        _log("error", "unhandled_error_in_message_processing", error=str(exc), exc_type=type(exc).__name__)
+
+
+async def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
+    parsed_event = _parse_event(event)
+    phone = parsed_event["phone"]
+    contact_id = parsed_event["contact_id"]
+    conversation_id = parsed_event["conversation_id"]
+    account_id = parsed_event["account_id"]
+    text = parsed_event["text"]
+    attachments = parsed_event["attachments"]
     image_url, mime_type = _first_image(attachments)
     has_image = bool(image_url)
 
-    _log("info", "message_received", contact_id=contact_id, has_image=has_image, text=text[:80])
+    _log("info", "message_received", contact_id=contact_id, has_image=has_image, text=text[:80], phone=phone)
 
     # --- access control ---
     if not is_allowlisted(phone):
-        send_reply(inbox_id, contact_id, decline_message(), dry_run=dry_run)
+        send_reply(conversation_id, account_id, decline_message(), dry_run=dry_run)
         return
 
     # --- query path ---
     if looks_like_query(text, has_image):
         _log("info", "query_path", contact_id=contact_id)
         reply = handle_query(text)
-        send_reply(inbox_id, contact_id, reply, dry_run=dry_run)
+        send_reply(conversation_id, account_id, reply, dry_run=dry_run)
         return
 
     # --- meter reading path: load or create conversation state ---
-    state = cs.load(contact_id) or cs.new_state(contact_id, inbox_id)
+    state = cs.load(contact_id) or cs.new_state(contact_id, conversation_id, account_id)
+    # Always refresh reply targets from the latest event
+    state["conversation_id"] = conversation_id
+    state["account_id"] = account_id
 
     # If sender just replied to a retake request and provides a new image
     if state.get("awaiting_retake") and has_image:
@@ -185,13 +202,13 @@ async def _process_message(event: dict, dry_run: bool) -> None:  # noqa: C901
     if missing:
         question = cs.next_question(missing)
         cs.save(state)
-        send_reply(inbox_id, contact_id, question, dry_run=dry_run)
+        send_reply(conversation_id, account_id, question, dry_run=dry_run)
         return
 
     # --- we have all fields; need an image ---
     if not state.get("pending_image_url"):
         cs.save(state)
-        send_reply(inbox_id, contact_id, "Please send the meter photo.", dry_run=dry_run)
+        send_reply(conversation_id, account_id, "Please send the meter photo.", dry_run=dry_run)
         return
 
     # --- download image ---
@@ -200,7 +217,7 @@ async def _process_message(event: dict, dry_run: bool) -> None:  # noqa: C901
     except Exception as exc:
         _log("error", "image_download_failed", error=str(exc))
         cs.save(state)
-        send_reply(inbox_id, contact_id, "Could not download the photo — please resend.", dry_run=dry_run)
+        send_reply(conversation_id, account_id, "Could not download the photo — please resend.", dry_run=dry_run)
         return
 
     # --- extract reading ---
@@ -222,7 +239,7 @@ async def _process_message(event: dict, dry_run: bool) -> None:  # noqa: C901
         state["awaiting_retake"] = True
         state["pending_image_url"] = None  # clear stale image
         cs.save(state)
-        send_reply(inbox_id, contact_id, LOW_CONFIDENCE_REPLY, dry_run=dry_run)
+        send_reply(conversation_id, account_id, LOW_CONFIDENCE_REPLY, dry_run=dry_run)
         return
 
     # --- all good: append to utility log ---
@@ -251,7 +268,7 @@ async def _process_message(event: dict, dry_run: bool) -> None:  # noqa: C901
         delta_str = "? (first reading for this meter)"
 
     confirmation = f"Logged: {row['property']} {row['utility_type']} {delta_str} (reading: {current_reading})"
-    send_reply(inbox_id, contact_id, confirmation, dry_run=dry_run)
+    send_reply(conversation_id, account_id, confirmation, dry_run=dry_run)
     _log("info", "reading_logged", property=row["property"], utility_type=row["utility_type"], delta=delta)
 
 

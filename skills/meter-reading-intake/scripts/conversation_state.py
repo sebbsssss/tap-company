@@ -5,8 +5,9 @@ Each file is keyed by contact_id and TTL-pruned after 24 h of inactivity.
 
 State schema:
   {
-    "contact_id": str,
-    "inbox_id": str,
+    "contact_id": str,          -- Zernio conversation.contactId (state key)
+    "conversation_id": str,     -- Zernio conversation.id (needed for replies)
+    "account_id": str,          -- Zernio account.id (needed for replies)
     "resolved": {
       "property": str|null,
       "utility_type": str|null,
@@ -79,10 +80,11 @@ def clear(contact_id: str) -> None:
     _state_path(contact_id).unlink(missing_ok=True)
 
 
-def new_state(contact_id: str, inbox_id: str) -> dict:
+def new_state(contact_id: str, conversation_id: str, account_id: str) -> dict:
     return {
         "contact_id": contact_id,
-        "inbox_id": inbox_id,
+        "conversation_id": conversation_id,
+        "account_id": account_id,
         "resolved": {
             "property": None,
             "utility_type": None,

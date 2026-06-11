@@ -1,21 +1,30 @@
 {
-  "event": "message.received",
   "id": "msg_test_002",
-  "inbox_id": "inbox_001",
-  "contact_id": "contact_helmy_001",
-  "sender": {
-    "id": "contact_helmy_001",
-    "name": "Helmy",
-    "phone": "+6591234567"
+  "event": "message.received",
+  "message": {
+    "id": "msg_002",
+    "text": "elec 2026-06-11",
+    "senderPhoneNumber": "+6591234567",
+    "senderId": "contact_helmy_001",
+    "attachments": [
+      {
+        "url": "https://api.zernio.com/v1/attachments/test_img_002",
+        "mimeType": "image/jpeg",
+        "filename": "meter_photo.jpg"
+      }
+    ],
+    "createdAt": "2026-06-11T10:00:00+08:00"
   },
-  "content": "elec 2026-06-11",
-  "caption": "elec 2026-06-11",
-  "attachments": [
-    {
-      "content_type": "image/jpeg",
-      "data_url": "https://api.zernio.com/v1/attachments/test_img_002",
-      "filename": "meter_photo.jpg"
-    }
-  ],
-  "received_at": "2026-06-11T10:00:00+08:00"
+  "conversation": {
+    "id": "conv_001",
+    "contactId": "contact_helmy_001",
+    "contactName": "Helmy",
+    "platform": "whatsapp"
+  },
+  "account": {
+    "id": "acc_001",
+    "name": "TAP Meter",
+    "platform": "whatsapp"
+  },
+  "timestamp": "2026-06-11T10:00:00+08:00"
 }

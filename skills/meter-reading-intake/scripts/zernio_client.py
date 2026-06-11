@@ -52,7 +52,12 @@ def _request(method: str, path: str, body: Optional[dict] = None, timeout: int =
 def list_webhooks() -> list[dict]:
     """Return existing webhook registrations."""
     result = _request("GET", "/webhooks/settings")
-    return result if isinstance(result, list) else result.get("data", [])
+    if isinstance(result, list):
+        return result
+    for key in ("data", "webhooks", "items", "results"):
+        if key in result:
+            return result[key]
+    return []
 
 
 def ensure_webhook(
@@ -76,25 +81,25 @@ def ensure_webhook(
     return result
 
 
-def send_reply(inbox_id: str, contact_id: str, message: str, *, dry_run: bool = True) -> dict:
-    """Send a free-form reply via the Zernio inbox API.
+def send_reply(conversation_id: str, account_id: str, message: str, *, dry_run: bool = True) -> dict:
+    """Send a free-form reply via POST /inbox/conversations/{id}/messages.
 
     dry_run=True (default): logs intent, never calls the API.
     Caller must explicitly pass dry_run=False to send.
     """
-    payload = {"inbox_id": inbox_id, "contact_id": contact_id, "content": message}
+    payload = {"accountId": account_id, "message": message}
     _log(
         "info" if dry_run else "warn",
         "send_reply",
         dry_run=dry_run,
-        contact_id=contact_id,
-        inbox_id=inbox_id,
+        conversation_id=conversation_id,
+        account_id=account_id,
         message_preview=message[:100],
     )
     if dry_run:
         return {"dry_run": True, "would_send": payload}
-    result = _request("POST", "/inbox/messages", payload)
-    _log("info", "reply_sent", contact_id=contact_id)
+    result = _request("POST", f"/inbox/conversations/{conversation_id}/messages", payload)
+    _log("info", "reply_sent", conversation_id=conversation_id)
     return result
 
 

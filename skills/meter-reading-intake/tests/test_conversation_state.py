@@ -13,7 +13,7 @@ def redirect_state_dir(tmp_path, monkeypatch):
 
 
 def test_new_state_has_all_none():
-    state = cs.new_state("contact_001", "inbox_001")
+    state = cs.new_state("contact_001", "conv_001", "acc_001")
     assert state["resolved"]["property"] is None
     assert state["resolved"]["utility_type"] is None
     assert state["resolved"]["reading_date"] is None
@@ -21,7 +21,7 @@ def test_new_state_has_all_none():
 
 
 def test_save_and_load_roundtrip(tmp_path):
-    state = cs.new_state("contact_001", "inbox_001")
+    state = cs.new_state("contact_001", "conv_001", "acc_001")
     state["resolved"]["property"] = "18 JALAN JINTAN"
     cs.save(state)
     loaded = cs.load("contact_001")
@@ -30,7 +30,7 @@ def test_save_and_load_roundtrip(tmp_path):
 
 
 def test_clear_removes_state(tmp_path):
-    state = cs.new_state("contact_002", "inbox_001")
+    state = cs.new_state("contact_002", "conv_001", "acc_001")
     cs.save(state)
     cs.clear("contact_002")
     assert cs.load("contact_002") is None
@@ -41,7 +41,7 @@ def test_load_returns_none_for_unknown():
 
 
 def test_merge_parsed_fills_missing():
-    state = cs.new_state("c", "i")
+    state = cs.new_state("c", "conv_1", "acc_1")
     parsed = {"property": "18 JALAN JINTAN", "utility_type": "electricity", "reading_date": date(2026, 6, 11)}
     state = cs.merge_parsed(state, parsed)
     assert state["resolved"]["property"] == "18 JALAN JINTAN"
@@ -50,7 +50,7 @@ def test_merge_parsed_fills_missing():
 
 
 def test_merge_parsed_does_not_overwrite():
-    state = cs.new_state("c", "i")
+    state = cs.new_state("c", "conv_1", "acc_1")
     state["resolved"]["property"] = "TLKR CAMPUS"
     parsed = {"property": "18 PENHAS", "utility_type": None, "reading_date": None}
     state = cs.merge_parsed(state, parsed)
@@ -59,7 +59,7 @@ def test_merge_parsed_does_not_overwrite():
 
 
 def test_missing_fields_partial():
-    state = cs.new_state("c", "i")
+    state = cs.new_state("c", "conv_1", "acc_1")
     state["resolved"]["property"] = "18 JALAN JINTAN"
     missing = cs.missing_fields(state)
     assert "property" not in missing
@@ -68,7 +68,7 @@ def test_missing_fields_partial():
 
 
 def test_missing_fields_empty_when_complete():
-    state = cs.new_state("c", "i")
+    state = cs.new_state("c", "conv_1", "acc_1")
     state["resolved"]["property"] = "18 JALAN JINTAN"
     state["resolved"]["utility_type"] = "electricity"
     state["resolved"]["reading_date"] = "2026-06-11"
@@ -76,7 +76,7 @@ def test_missing_fields_empty_when_complete():
 
 
 def test_is_complete_false_when_awaiting_retake():
-    state = cs.new_state("c", "i")
+    state = cs.new_state("c", "conv_1", "acc_1")
     state["resolved"]["property"] = "18 JALAN JINTAN"
     state["resolved"]["utility_type"] = "water"
     state["resolved"]["reading_date"] = "2026-06-11"
