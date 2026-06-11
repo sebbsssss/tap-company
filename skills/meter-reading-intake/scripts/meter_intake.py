@@ -70,7 +70,7 @@ def _parse_event(event: dict) -> dict:
     """Extract normalized fields from a Zernio message.received event.
 
     Zernio payload shape (top-level):
-      message.senderPhoneNumber, message.text, message.attachments[]
+      message.senderPhoneNumber, message.senderId, message.text, message.attachments[]
       conversation.id, conversation.contactId
       account.id
     """
@@ -79,6 +79,7 @@ def _parse_event(event: dict) -> dict:
     acc = event.get("account") or {}
     return {
         "phone": msg.get("senderPhoneNumber") or None,
+        "sender_id": msg.get("senderId") or None,
         "contact_id": conv.get("contactId") or msg.get("senderId") or "",
         "conversation_id": conv.get("id") or "",
         "account_id": acc.get("id") or "",
@@ -102,6 +103,19 @@ def _first_image(attachments: list[dict]) -> tuple[str | None, str]:
             mime = "image/png" if url.lower().endswith(".png") else "image/jpeg"
             return url, mime
     return None, "image/jpeg"
+
+
+# ---------------------------------------------------------------------------
+# Startup
+# ---------------------------------------------------------------------------
+
+
+@app.on_event("startup")
+async def startup_log() -> None:
+    allowlist_raw = os.environ.get("ALLOWLISTED_NUMBERS", "")
+    count = len([n for n in allowlist_raw.split(",") if n.strip()]) if allowlist_raw else 0
+    _log("info", "app_startup", dry_run=_dry_run(), allowlist_count=count,
+         webhook_secret_set=bool(os.environ.get("WEBHOOK_SECRET")))
 
 
 # ---------------------------------------------------------------------------
@@ -153,6 +167,7 @@ async def _process_message(event: dict, dry_run: bool) -> None:  # noqa: C901
 async def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
     parsed_event = _parse_event(event)
     phone = parsed_event["phone"]
+    sender_id = parsed_event["sender_id"]
     contact_id = parsed_event["contact_id"]
     conversation_id = parsed_event["conversation_id"]
     account_id = parsed_event["account_id"]
@@ -164,7 +179,7 @@ async def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C
     _log("info", "message_received", contact_id=contact_id, has_image=has_image, text=text[:80], phone=phone)
 
     # --- access control ---
-    if not is_allowlisted(phone):
+    if not is_allowlisted(phone, sender_id):
         send_reply(conversation_id, account_id, decline_message(), dry_run=dry_run)
         return
 

@@ -13,13 +13,6 @@ on:
       - "skills/meter-reading-intake/**"
 
   workflow_dispatch:
-    inputs:
-      dry_run:
-        description: "Keep METER_INTAKE_DRY_RUN=true (safe mode)"
-        required: false
-        default: "true"
-        type: choice
-        options: ["true", "false"]
 
 jobs:
   deploy:
@@ -41,6 +34,8 @@ jobs:
             || flyctl volumes create meter_data -a tap-meter-intake -r sin --size 1 --yes
 
       # Set all runtime secrets on the Fly app
+      # NOTE: METER_INTAKE_DRY_RUN is intentionally excluded — it is operator-owned.
+      # Toggle live/dry-run manually: flyctl secrets set METER_INTAKE_DRY_RUN=false -a tap-meter-intake
       - name: Set Fly secrets
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_METER_INTAKE_TOKEN }}
@@ -49,7 +44,6 @@ jobs:
           PAPERCLIP_SERVICE_KEY: ${{ secrets.PAPERCLIP_SERVICE_KEY }}
           ALLOWLISTED_NUMBERS: ${{ secrets.METER_ALLOWLISTED_NUMBERS }}
           WEBHOOK_SECRET: ${{ secrets.ZERNIO_WEBHOOK_SECRET }}
-          DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
         run: |
           flyctl secrets set \
             ZERNIO_API_KEY="$ZERNIO_API_KEY" \
@@ -63,7 +57,6 @@ jobs:
             ERWAN_INBOX_ID="${{ secrets.ERWAN_INBOX_ID }}" \
             ALLOWLISTED_NUMBERS="$ALLOWLISTED_NUMBERS" \
             WEBHOOK_SECRET="$WEBHOOK_SECRET" \
-            METER_INTAKE_DRY_RUN="$DRY_RUN" \
             --app tap-meter-intake \
             --stage
 

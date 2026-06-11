@@ -175,22 +175,28 @@ def looks_like_query(text: str, has_attachment: bool) -> bool:
 # Access control
 # ---------------------------------------------------------------------------
 
-def is_allowlisted(phone: Optional[str]) -> bool:
-    """Return True if phone is in ALLOWLISTED_NUMBERS env var.
+def _normalize_phone(raw: str) -> str:
+    """Digits-only: strip whitespace, drop leading +, remove separators."""
+    return raw.strip().lstrip("+").replace(" ", "").replace("-", "")
 
-    ALLOWLISTED_NUMBERS is a comma-separated list of E.164 numbers.
-    If the env var is not set, allow all (dev/pre-launch mode).
+
+def is_allowlisted(phone: Optional[str], sender_id: Optional[str] = None) -> bool:
+    """Return True if phone or sender_id matches ALLOWLISTED_NUMBERS.
+
+    Normalizes both sides (digits-only) so +65XXXXX, 65XXXXX, and spaced
+    variants all compare equal. Checks both senderPhoneNumber (with +) and
+    senderId (without +) from the Zernio payload.
     """
     import os
     allowlist_raw = os.environ.get("ALLOWLISTED_NUMBERS", "").strip()
     if not allowlist_raw:
-        # Env var not configured yet — allow all (logged as warning)
         _log("warn", "access_control_open", reason="ALLOWLISTED_NUMBERS not set")
         return True
-    allowlist = {n.strip() for n in allowlist_raw.split(",") if n.strip()}
-    allowed = bool(phone and phone in allowlist)
+    allowlist = {_normalize_phone(n) for n in allowlist_raw.split(",") if n.strip()}
+    candidates = [_normalize_phone(v) for v in (phone, sender_id) if v]
+    allowed = bool(candidates and any(c in allowlist for c in candidates))
     if not allowed:
-        _log("warn", "access_denied", phone=phone[:4] + "***" if phone else None)
+        _log("warn", "access_denied", phone_preview=(phone or sender_id or "")[:6] + "***")
     return allowed
 
 

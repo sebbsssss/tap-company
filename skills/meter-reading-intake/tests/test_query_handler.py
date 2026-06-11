@@ -28,14 +28,26 @@ def test_allowlist_allows_listed_number(monkeypatch):
     assert qh.is_allowlisted("+6591234567") is True
 
 
+def test_allowlist_normalizes_plus_prefix(monkeypatch):
+    """Stored with +, Zernio senderId arrives without — must still match."""
+    monkeypatch.setenv("ALLOWLISTED_NUMBERS", "+6591234567")
+    assert qh.is_allowlisted(None, sender_id="6591234567") is True
+
+
+def test_allowlist_normalizes_spaces(monkeypatch):
+    """Allowlist entry with space after comma must match."""
+    monkeypatch.setenv("ALLOWLISTED_NUMBERS", "+6591234567, +6598765432")
+    assert qh.is_allowlisted("+6598765432") is True
+
+
 def test_allowlist_blocks_unlisted_number(monkeypatch):
     monkeypatch.setenv("ALLOWLISTED_NUMBERS", "+6591234567,+6598765432")
     assert qh.is_allowlisted("+6500000000") is False
 
 
-def test_allowlist_blocks_none(monkeypatch):
+def test_allowlist_blocks_none_phone_and_sender(monkeypatch):
     monkeypatch.setenv("ALLOWLISTED_NUMBERS", "+6591234567")
-    assert qh.is_allowlisted(None) is False
+    assert qh.is_allowlisted(None, None) is False
 
 
 def test_decline_message_not_empty():
