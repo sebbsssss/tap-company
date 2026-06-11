@@ -37,6 +37,7 @@ import hmac
 import json
 import os
 import sys
+import time
 from datetime import date
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
@@ -49,7 +50,25 @@ from query_handler import decline_message, handle_query, is_allowlisted, looks_l
 from utility_log import append_reading
 from zernio_client import _log, download_image, ensure_webhook, send_reply
 
-app = FastAPI(title="tap-meter-intake", version="0.2.0")
+app = FastAPI(title="tap-meter-intake", version="0.3.0")
+
+# ---------------------------------------------------------------------------
+# Event deduplication — prevents double-processing on Zernio retries
+# ---------------------------------------------------------------------------
+_SEEN_EVENTS: dict[str, float] = {}
+_DEDUP_TTL = 300.0  # seconds — covers all Zernio retry windows
+
+
+def _ack_event(event_id: str) -> bool:
+    """Register event_id. Returns True if already seen (duplicate)."""
+    now = time.monotonic()
+    stale = [k for k, v in _SEEN_EVENTS.items() if now - v > _DEDUP_TTL]
+    for k in stale:
+        del _SEEN_EVENTS[k]
+    if event_id in _SEEN_EVENTS:
+        return True
+    _SEEN_EVENTS[event_id] = now
+    return False
 
 LOW_CONFIDENCE_REPLY = (
     "The reading is not clear — please resend a front-facing photo with good lighting."
@@ -156,15 +175,15 @@ async def admin_register_webhook(request: Request) -> JSONResponse:
 # ---------------------------------------------------------------------------
 
 
-async def _process_message(event: dict, dry_run: bool) -> None:  # noqa: C901
-    """Background task — process one message.received event with conversation state."""
+def _process_message(event: dict, dry_run: bool) -> None:  # noqa: C901
+    """Background task (sync → Starlette runs in thread pool, never blocks the event loop)."""
     try:
-        await _process_message_inner(event, dry_run)
+        _process_message_inner(event, dry_run)
     except Exception as exc:
         _log("error", "unhandled_error_in_message_processing", error=str(exc), exc_type=type(exc).__name__)
 
 
-async def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
+def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
     parsed_event = _parse_event(event)
     phone = parsed_event["phone"]
     sender_id = parsed_event["sender_id"]
@@ -316,6 +335,16 @@ async def zernio_webhook(request: Request, background_tasks: BackgroundTasks) ->
     if event_type != "message.received":
         return JSONResponse({"ignored": True, "event_type": event_type})
 
-    # Accept immediately; process in background (Zernio expects fast 200)
+    # Deduplicate Zernio retries — Zernio resends if no 2xx within 5s
+    event_id = (
+        body.get("id")
+        or request.headers.get("X-Zernio-Event-Id", "")
+        or request.headers.get("X-Zernio-Delivery-Id", "")
+    )
+    if event_id and _ack_event(event_id):
+        _log("info", "webhook_deduped", event_id=event_id[:16])
+        return JSONResponse({"status": "already_accepted"}, status_code=200)
+
+    # Accept immediately; process in thread pool (Zernio expects fast 200)
     background_tasks.add_task(_process_message, body, _dry_run())
     return JSONResponse({"status": "accepted"}, status_code=200)
