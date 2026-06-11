@@ -1,0 +1,8 @@
+# tap-meter-intake dependencies
+# Note: fastapi, uvicorn, anthropic are additions to the project allowlist
+# (openpyxl, requests, pytest) — approved for this service per THE-17390.
+fastapi>=0.115
+uvicorn[standard]>=0.32
+requests>=2.32
+openpyxl>=3.1
+anthropic>=0.40

@@ -1,0 +1,21 @@
+{
+  "event": "message.received",
+  "id": "msg_test_001",
+  "inbox_id": "inbox_001",
+  "contact_id": "contact_helmy_001",
+  "sender": {
+    "id": "contact_helmy_001",
+    "name": "Helmy",
+    "phone": "+6591234567"
+  },
+  "content": "18JJ elec 2026-06-11",
+  "caption": "18JJ elec 2026-06-11",
+  "attachments": [
+    {
+      "content_type": "image/jpeg",
+      "data_url": "https://api.zernio.com/v1/attachments/test_img_001",
+      "filename": "meter_photo.jpg"
+    }
+  ],
+  "received_at": "2026-06-11T09:32:00+08:00"
+}
