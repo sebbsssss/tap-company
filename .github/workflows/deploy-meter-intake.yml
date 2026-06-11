@@ -32,7 +32,7 @@ jobs:
         run: |
           flyctl apps list | grep -q "tap-meter-intake" \
             && echo "App already exists" \
-            || flyctl apps create tap-meter-intake --org personal
+            || flyctl apps create tap-meter-intake
 
       # Create persistent volume (idempotent — tolerate "already exists")
       - name: Create data volume (first time only)
