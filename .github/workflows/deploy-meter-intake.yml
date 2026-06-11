@@ -1,7 +1,9 @@
 name: Deploy tap-meter-intake (meter reading pipeline)
 
-# Requires GitHub secret: FLY_METER_INTAKE_TOKEN
-# Generate once: flyctl tokens create deploy -a tap-meter-intake --expiry 8760h
+# Requires GitHub secrets: FLY_METER_INTAKE_TOKEN, ZERNIO_WEBHOOK_SECRET
+# Generate deploy token once: flyctl tokens create deploy -a tap-meter-intake --expiry 8760h
+# ZERNIO_WEBHOOK_SECRET: generate once (e.g. openssl rand -hex 32), then set in Zernio
+#   dashboard under webhook settings AND as this GitHub secret.
 # FLY_API_TOKEN is scoped to tap-company and cannot be reused here.
 
 on:
@@ -46,6 +48,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PAPERCLIP_SERVICE_KEY: ${{ secrets.PAPERCLIP_SERVICE_KEY }}
           ALLOWLISTED_NUMBERS: ${{ secrets.METER_ALLOWLISTED_NUMBERS }}
+          WEBHOOK_SECRET: ${{ secrets.ZERNIO_WEBHOOK_SECRET }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
         run: |
           flyctl secrets set \
@@ -59,6 +62,7 @@ jobs:
             ERWAN_CONTACT_ID="${{ secrets.ERWAN_CONTACT_ID }}" \
             ERWAN_INBOX_ID="${{ secrets.ERWAN_INBOX_ID }}" \
             ALLOWLISTED_NUMBERS="$ALLOWLISTED_NUMBERS" \
+            WEBHOOK_SECRET="$WEBHOOK_SECRET" \
             METER_INTAKE_DRY_RUN="$DRY_RUN" \
             --app tap-meter-intake \
             --stage
@@ -74,26 +78,28 @@ jobs:
             --app tap-meter-intake
         working-directory: skills/meter-reading-intake
 
-      # Register Zernio webhook pointing at the live receiver URL (idempotent)
-      # continue-on-error: Zernio API may reject during initial provisioning; app is still live.
+      # Register Zernio webhook pointing at the live receiver URL (idempotent via ensure_webhook)
       - name: Register Zernio webhook
-        continue-on-error: true
         run: |
           echo "Waiting 20s for app to start..."
           sleep 20
           HEALTH=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
             "https://tap-meter-intake.fly.dev/healthz")
           echo "Health: HTTP $HEALTH"
-          if [ "$HEALTH" = "200" ]; then
-            BODY=$(curl -s --max-time 15 -X POST \
-              https://tap-meter-intake.fly.dev/admin/register-webhook \
-              -H "Content-Type: application/json" \
-              -d '{"callback_url":"https://tap-meter-intake.fly.dev/webhook/zernio"}')
-            echo "Webhook response: $BODY"
-            echo "$BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print('Webhook result:', d)" \
-              || echo "Non-JSON response from webhook endpoint (Zernio may have returned an error — register manually after confirming ZERNIO_API_KEY)"
-          else
-            echo "App not healthy ($HEALTH) — webhook registration skipped."
+          if [ "$HEALTH" != "200" ]; then
+            echo "App not healthy ($HEALTH) — aborting"
+            exit 1
+          fi
+          RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 15 -X POST \
+            https://tap-meter-intake.fly.dev/admin/register-webhook \
+            -H "Content-Type: application/json" \
+            -d '{"callback_url":"https://tap-meter-intake.fly.dev/webhook/zernio"}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "HTTP $HTTP_CODE: $BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Webhook registration failed (HTTP $HTTP_CODE)"
+            exit 1
           fi
 
       - name: Smoke test /healthz

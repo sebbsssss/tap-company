@@ -55,7 +55,11 @@ def list_webhooks() -> list[dict]:
     return result if isinstance(result, list) else result.get("data", [])
 
 
-def ensure_webhook(callback_url: str, events: Optional[list[str]] = None) -> dict:
+def ensure_webhook(
+    callback_url: str,
+    events: Optional[list[str]] = None,
+    secret: Optional[str] = None,
+) -> dict:
     """Idempotent: register the webhook only if one for callback_url doesn't exist."""
     if events is None:
         events = ["message.received"]
@@ -64,7 +68,10 @@ def ensure_webhook(callback_url: str, events: Optional[list[str]] = None) -> dic
         if w.get("url") == callback_url:
             _log("info", "webhook_already_registered", url=callback_url)
             return w
-    result = _request("POST", "/webhooks", {"url": callback_url, "events": events})
+    body: dict = {"url": callback_url, "events": events}
+    if secret:
+        body["secret"] = secret
+    result = _request("POST", "/webhooks", body)
     _log("info", "webhook_registered", url=callback_url, result=str(result)[:120])
     return result
 

@@ -19,6 +19,8 @@ Env vars:
   PAPERCLIP_ISSUE_ID         — issue to attach xlsx to (set to THE-17390's id)
   PAPERCLIP_COMPANY_ID       — TAP company id
   ALLOWLISTED_NUMBERS        — comma-separated E.164 numbers allowed to use the service
+  WEBHOOK_SECRET             — HMAC-SHA256 secret for X-Zernio-Signature verification;
+                               if unset, incoming webhooks are accepted unsigned (warns in log)
 
 Operator approval gate: all send_reply calls default dry_run=True.
 Set METER_INTAKE_DRY_RUN=false in Fly Secrets to enable live sends.
@@ -30,6 +32,8 @@ multi-turn exchanges (missing fields + retakes) work across separate webhook eve
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
 import sys
@@ -54,6 +58,12 @@ LOW_CONFIDENCE_REPLY = (
 
 def _dry_run() -> bool:
     return os.environ.get("METER_INTAKE_DRY_RUN", "true").lower() != "false"
+
+
+def _verify_hmac(raw_body: bytes, secret: str, sig_header: str) -> bool:
+    """Verify X-Zernio-Signature (bare lowercase HMAC-SHA256 hex of raw body)."""
+    expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, sig_header.lower())
 
 
 def _sender_phone(event: dict) -> str | None:
@@ -106,11 +116,19 @@ async def healthz() -> dict:
 
 @app.post("/admin/register-webhook")
 async def admin_register_webhook(request: Request) -> JSONResponse:
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body")
     callback_url = body.get("callback_url") or os.environ.get("WEBHOOK_CALLBACK_URL", "")
     if not callback_url:
         raise HTTPException(400, "callback_url required (body or WEBHOOK_CALLBACK_URL env)")
-    result = ensure_webhook(callback_url)
+    secret = os.environ.get("WEBHOOK_SECRET") or None
+    try:
+        result = ensure_webhook(callback_url, secret=secret)
+    except Exception as exc:
+        _log("error", "register_webhook_failed", error=str(exc))
+        raise HTTPException(502, f"Zernio API error: {exc}")
     return JSONResponse(result)
 
 
@@ -239,7 +257,22 @@ async def _process_message(event: dict, dry_run: bool) -> None:  # noqa: C901
 
 @app.post("/webhook/zernio")
 async def zernio_webhook(request: Request, background_tasks: BackgroundTasks) -> JSONResponse:
-    body = await request.json()
+    raw_body = await request.body()
+
+    secret = os.environ.get("WEBHOOK_SECRET", "")
+    if secret:
+        sig = request.headers.get("X-Zernio-Signature", "")
+        if not _verify_hmac(raw_body, secret, sig):
+            _log("warn", "webhook_hmac_invalid", sig_preview=sig[:16])
+            raise HTTPException(403, "Invalid webhook signature")
+    else:
+        _log("warn", "webhook_secret_not_configured", msg="accepting unsigned request — set WEBHOOK_SECRET")
+
+    try:
+        body = json.loads(raw_body)
+    except json.JSONDecodeError:
+        raise HTTPException(400, "Invalid JSON")
+
     event_type = (
         body.get("event")
         or body.get("type")

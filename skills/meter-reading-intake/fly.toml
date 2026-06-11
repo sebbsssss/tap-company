@@ -6,6 +6,9 @@
 #   ERWAN_CONTACT_ID
 #   ERWAN_INBOX_ID
 #   WEBHOOK_CALLBACK_URL=https://tap-meter-intake.fly.dev/webhook/zernio
+#   WEBHOOK_SECRET — generate: openssl rand -hex 32
+#                    set same value in Zernio dashboard (webhook → secret field)
+#                    AND as GitHub secret ZERNIO_WEBHOOK_SECRET
 
 app = 'tap-meter-intake'
 primary_region = 'sin'
