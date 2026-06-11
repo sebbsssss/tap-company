@@ -75,22 +75,25 @@ jobs:
         working-directory: skills/meter-reading-intake
 
       # Register Zernio webhook pointing at the live receiver URL (idempotent)
+      # continue-on-error: Zernio API may reject during initial provisioning; app is still live.
       - name: Register Zernio webhook
+        continue-on-error: true
         run: |
           echo "Waiting 20s for app to start..."
           sleep 20
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --max-time 15 \
+          HEALTH=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
             "https://tap-meter-intake.fly.dev/healthz")
-          echo "Health: HTTP $STATUS"
-          if [ "$STATUS" = "200" ]; then
-            curl -s -X POST https://tap-meter-intake.fly.dev/admin/register-webhook \
+          echo "Health: HTTP $HEALTH"
+          if [ "$HEALTH" = "200" ]; then
+            BODY=$(curl -s --max-time 15 -X POST \
+              https://tap-meter-intake.fly.dev/admin/register-webhook \
               -H "Content-Type: application/json" \
-              -d '{"callback_url":"https://tap-meter-intake.fly.dev/webhook/zernio"}' \
-              | python3 -c "import sys,json; d=json.load(sys.stdin); print('Webhook result:', d)"
+              -d '{"callback_url":"https://tap-meter-intake.fly.dev/webhook/zernio"}')
+            echo "Webhook response: $BODY"
+            echo "$BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print('Webhook result:', d)" \
+              || echo "Non-JSON response from webhook endpoint (Zernio may have returned an error — register manually after confirming ZERNIO_API_KEY)"
           else
-            echo "App not healthy yet — webhook registration skipped. Run manually:"
-            echo "  curl -X POST https://tap-meter-intake.fly.dev/admin/register-webhook -H 'Content-Type: application/json' -d '{\"callback_url\":\"https://tap-meter-intake.fly.dev/webhook/zernio\"}'"
+            echo "App not healthy ($HEALTH) — webhook registration skipped."
           fi
 
       - name: Smoke test /healthz
