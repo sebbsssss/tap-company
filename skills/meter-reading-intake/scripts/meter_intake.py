@@ -266,7 +266,7 @@ async def zernio_webhook(request: Request, background_tasks: BackgroundTasks) ->
             _log("warn", "webhook_hmac_invalid", sig_preview=sig[:16])
             raise HTTPException(403, "Invalid webhook signature")
     else:
-        _log("warn", "webhook_secret_not_configured", msg="accepting unsigned request — set WEBHOOK_SECRET")
+        _log("warn", "webhook_secret_not_configured", detail="accepting unsigned request — set WEBHOOK_SECRET")
 
     try:
         body = json.loads(raw_body)
