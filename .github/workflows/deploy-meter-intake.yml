@@ -25,21 +25,19 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      # Create the app if it doesn't exist yet (idempotent)
-      - name: Create Fly app (first time only)
+      # Verify the app exists — it must be pre-created once by an org-admin:
+      #   flyctl apps create tap-meter-intake --org theassemblyplace-web
+      # The deploy token (FLY_API_TOKEN) is scoped to tap-company and cannot create apps.
+      - name: Verify Fly app exists
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           if flyctl apps list | grep -q "tap-meter-intake"; then
-            echo "App already exists"
+            echo "App tap-meter-intake found — proceeding."
           else
-            # Resolve org slug from the sibling tap-company app (same account)
-            ORG=$(flyctl apps list --json | python3 -c \
-              "import sys,json; apps=json.load(sys.stdin); \
-               match=[a for a in apps if a.get('Name')=='tap-company']; \
-               print(match[0]['Organization']['Slug'] if match else apps[0]['Organization']['Slug'])")
-            echo "Creating tap-meter-intake in org: $ORG"
-            flyctl apps create tap-meter-intake --org "$ORG"
+            echo "::error::App tap-meter-intake does not exist. Create it once with:"
+            echo "::error::  flyctl apps create tap-meter-intake --org theassemblyplace-web"
+            exit 1
           fi
 
       # Create persistent volume (idempotent — tolerate "already exists")
