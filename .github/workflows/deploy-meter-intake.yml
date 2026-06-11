@@ -42,9 +42,10 @@ jobs:
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PAPERCLIP_SERVICE_KEY: ${{ secrets.PAPERCLIP_SERVICE_KEY }}
-          ALLOWLISTED_NUMBERS: ${{ secrets.METER_ALLOWLISTED_NUMBERS }}
           WEBHOOK_SECRET: ${{ secrets.ZERNIO_WEBHOOK_SECRET }}
         run: |
+          # ALLOWLISTED_NUMBERS is operator-owned — set manually:
+          #   flyctl secrets set ALLOWLISTED_NUMBERS="..." -a tap-meter-intake
           flyctl secrets set \
             ZERNIO_API_KEY="$ZERNIO_API_KEY" \
             ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
@@ -55,7 +56,6 @@ jobs:
             WEBHOOK_CALLBACK_URL="https://tap-meter-intake.fly.dev/webhook/zernio" \
             IRWAN_CONTACT_ID="${{ secrets.IRWAN_CONTACT_ID }}" \
             IRWAN_INBOX_ID="${{ secrets.IRWAN_INBOX_ID }}" \
-            ALLOWLISTED_NUMBERS="$ALLOWLISTED_NUMBERS" \
             WEBHOOK_SECRET="$WEBHOOK_SECRET" \
             --app tap-meter-intake \
             --stage

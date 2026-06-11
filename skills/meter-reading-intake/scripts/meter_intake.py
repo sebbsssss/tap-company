@@ -96,10 +96,18 @@ def _parse_event(event: dict) -> dict:
     msg = event.get("message") or {}
     conv = event.get("conversation") or {}
     acc = event.get("account") or {}
+    phone = (
+        msg.get("senderPhoneNumber")
+        or msg.get("senderId")
+        or conv.get("participantUsername")
+        or conv.get("participantId")
+        or None
+    )
+    sender_id = msg.get("senderId") or conv.get("participantId") or None
     return {
-        "phone": msg.get("senderPhoneNumber") or None,
-        "sender_id": msg.get("senderId") or None,
-        "contact_id": conv.get("contactId") or msg.get("senderId") or "",
+        "phone": phone,
+        "sender_id": sender_id,
+        "contact_id": conv.get("contactId") or sender_id or "",
         "conversation_id": conv.get("id") or "",
         "account_id": acc.get("id") or "",
         "text": (msg.get("text") or "").strip(),
@@ -330,7 +338,10 @@ async def zernio_webhook(request: Request, background_tasks: BackgroundTasks) ->
         or body.get("event_type")
         or ""
     )
-    _log("info", "webhook_received", event_type=event_type)
+    msg_keys = list((body.get("message") or {}).keys())
+    conv_keys = list((body.get("conversation") or {}).keys())
+    _log("info", "webhook_received", event_type=event_type,
+         msg_keys=msg_keys, conv_keys=conv_keys)
 
     if event_type != "message.received":
         return JSONResponse({"ignored": True, "event_type": event_type})
