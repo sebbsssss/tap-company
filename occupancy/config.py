@@ -11,12 +11,16 @@ Optional env vars:
   OCCUPANCY_PORT                   — HTTP port for the API server (default: 8080)
   OCCUPANCY_ROOM_AVAILABILITY_MODULE — CRM endpoint for room availability data
                                        (default: com/dashboard/room_availability)
+  OCCUPANCY_EXCEL_PATH             — path to cleaned occupancy Excel file
+                                     (default: /data/occupancy.xlsx on Fly, data/occupancy.xlsx locally)
+  ADMIN_API_TOKEN                  — bearer token for POST /api/admin/upload-occupancy
 """
 
 import os
 from dataclasses import dataclass
 
 _DEFAULT_CRM_BASE = "https://crm-api.theassemblyplace.com"
+_DEFAULT_EXCEL_PATH = "/data/occupancy.xlsx" if os.path.isdir("/data") else "data/occupancy.xlsx"
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,8 @@ class OccupancyConfig:
     target_db_path: str
     port: int
     room_availability_module: str
+    excel_path: str
+    admin_api_token: str
 
 
 def load() -> OccupancyConfig:
@@ -38,4 +44,6 @@ def load() -> OccupancyConfig:
             "OCCUPANCY_ROOM_AVAILABILITY_MODULE",
             "com/dashboard/room_availability",
         ),
+        excel_path=os.environ.get("OCCUPANCY_EXCEL_PATH", _DEFAULT_EXCEL_PATH),
+        admin_api_token=os.environ.get("ADMIN_API_TOKEN", ""),
     )

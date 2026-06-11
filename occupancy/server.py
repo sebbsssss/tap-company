@@ -32,6 +32,13 @@ from typing import Any
 from occupancy import api as handlers
 from occupancy.config import OccupancyConfig, load as load_config
 from occupancy.crm_client import CRMClient, CRMAPIError, CRMConfigError, load_from_fixtures
+from occupancy.excel_source import (
+    ExcelBundle,
+    handle_data_quality_excel,
+    handle_properties_excel,
+    handle_units_monthly_excel,
+    load_excel,
+)
 from occupancy.models import OccupancyData
 from occupancy.target_store import TargetStore
 
@@ -52,6 +59,7 @@ _ROUTES = [
     ("GET",  r"^/api/occupancy/export/pdf-data$",     "export_pdf_data"),
     ("GET",  r"^/api/occupancy/settings/target$",     "get_targets"),
     ("PUT",  r"^/api/occupancy/settings/target$",     "put_targets"),
+    ("POST", r"^/api/admin/upload-occupancy$",        "upload_excel"),
     ("GET",  r"^/healthz$",                           "healthz"),
 ]
 
@@ -78,11 +86,30 @@ _COMPILED = [(m, re.compile(pat), name) for m, pat, name in _ROUTES]
 def _build_handler(cfg: OccupancyConfig, fixtures_path: str | None) -> type:
     store = TargetStore(cfg.target_db_path)
 
+    # Try to load clean Excel source — takes priority over CRM for the 3 main endpoints.
+    # excel_bundle is None when the file hasn't been uploaded yet.
+    _state: dict[str, Any] = {"bundle": load_excel(cfg.excel_path)}
+
+    def _get_excel_bundle() -> ExcelBundle | None:
+        return _state["bundle"]
+
+    def _reload_excel() -> ExcelBundle | None:
+        _state["bundle"] = load_excel(cfg.excel_path)
+        return _state["bundle"]
+
     def _get_data() -> OccupancyData:
         if fixtures_path:
             return load_from_fixtures(fixtures_path)
         client = CRMClient(cfg)
         return client.fetch_all()
+
+    def _check_admin_auth(auth_header: str | None) -> bool:
+        if not cfg.admin_api_token:
+            return False
+        if not auth_header:
+            return False
+        token = auth_header.removeprefix("Bearer ").strip()
+        return token == cfg.admin_api_token
 
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self, fmt: str, *args: Any) -> None:
@@ -131,7 +158,19 @@ def _build_handler(cfg: OccupancyConfig, fixtures_path: str | None) -> type:
                 return
 
             if name == "healthz":
-                self._send(200, {"Content-Type": "application/json"}, b'{"status":"ok"}')
+                bundle = _get_excel_bundle()
+                status_body = json.dumps({
+                    "status": "ok",
+                    "excel_source": bundle.source_path if bundle else None,
+                    "excel_loaded_at": bundle.loaded_at if bundle else None,
+                }).encode()
+                self._send(200, {"Content-Type": "application/json"}, status_body)
+                return
+
+            if name == "upload_excel":
+                # Handled in do_POST — should not reach here via _handle_request
+                # since do_POST routes upload_excel before calling _handle_request.
+                self._json_error("Method not allowed", 405)
                 return
 
             if name == "login":
@@ -178,6 +217,27 @@ def _build_handler(cfg: OccupancyConfig, fixtures_path: str | None) -> type:
                     self._json_error("Not found", 404)
                 return
 
+            params = self._params()
+            bundle = _get_excel_bundle()
+
+            # The three main occupancy endpoints are served from the Excel when
+            # a bundle is loaded. They do NOT call the CRM. All other endpoints
+            # still use CRM (or fixtures in test mode).
+            if bundle is not None and name in ("properties", "units_monthly", "data_quality"):
+                try:
+                    if name == "properties":
+                        status, headers, resp = handle_properties_excel(params, bundle, store)
+                    elif name == "units_monthly":
+                        status, headers, resp = handle_units_monthly_excel(params, bundle, store)
+                    elif name == "data_quality":
+                        status, headers, resp = handle_data_quality_excel(params, bundle, store)
+                except Exception as e:
+                    self._json_error(f"Excel handler error: {e}", 500)
+                    return
+                self._send(status, headers, resp)
+                return
+
+            # For all other routes (or when no Excel loaded), fetch from CRM.
             try:
                 data = _get_data()
             except (CRMConfigError, CRMAPIError) as e:
@@ -186,8 +246,6 @@ def _build_handler(cfg: OccupancyConfig, fixtures_path: str | None) -> type:
             except Exception as e:
                 self._json_error(f"Internal error: {e}", 500)
                 return
-
-            params = self._params()
 
             try:
                 if name == "summary":
@@ -233,11 +291,68 @@ def _build_handler(cfg: OccupancyConfig, fixtures_path: str | None) -> type:
             body = self.rfile.read(length) if length > 0 else b""
             self._handle_request(body)
 
+        def do_POST(self) -> None:
+            path = self._path_only()
+            if path == "/api/admin/upload-occupancy":
+                self._handle_upload_excel()
+                return
+            self._json_error("Not found", 404)
+
+        def _handle_upload_excel(self) -> None:
+            # Auth check
+            auth = self.headers.get("Authorization") or self.headers.get("x-admin-token")
+            if not _check_admin_auth(auth):
+                self._json_error("Unauthorized — provide Authorization: Bearer <ADMIN_API_TOKEN>", 401)
+                return
+
+            length = int(self.headers.get("Content-Length", 0))
+            if length == 0:
+                self._json_error("Empty body — send the xlsx file as raw bytes", 400)
+                return
+
+            # Max 50 MB sanity check
+            if length > 50 * 1024 * 1024:
+                self._json_error("File too large (max 50 MB)", 413)
+                return
+
+            data = self.rfile.read(length)
+
+            # Validate it looks like a ZIP/xlsx (xlsx files start with PK magic bytes)
+            if not data[:2] == b"PK":
+                self._json_error("File does not look like a valid xlsx (expected ZIP/PK header)", 400)
+                return
+
+            # Write to configured path (atomic-ish: write to .tmp then rename)
+            target = Path(cfg.excel_path)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            tmp = target.with_suffix(".xlsx.tmp")
+            try:
+                tmp.write_bytes(data)
+                tmp.replace(target)
+            except OSError as e:
+                self._json_error(f"Failed to save file: {e}", 500)
+                return
+
+            # Reload the bundle
+            new_bundle = _reload_excel()
+            if new_bundle is None:
+                self._json_error("File saved but failed to parse — check server logs", 500)
+                return
+
+            resp = json.dumps({
+                "ok": True,
+                "rows": len(new_bundle.master_rows),
+                "months": new_bundle.months(),
+                "properties": len(set(r.property_name for r in new_bundle.master_rows)),
+                "loaded_at": new_bundle.loaded_at,
+            }).encode()
+            self._send(200, {"Content-Type": "application/json"}, resp)
+
         def do_OPTIONS(self) -> None:
             self.send_response(204)
             self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "GET, PUT, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Access-Control-Allow-Methods", "GET, PUT, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, x-admin-token")
             self.end_headers()
 
     return Handler

@@ -42,14 +42,25 @@
   }
 
   // ---- Live API fetch ------------------------------------------------
+  function fetchWithTimeout(url, ms) {
+    return Promise.race([
+      fetch(url),
+      new Promise(function (_, reject) {
+        setTimeout(function () { reject(new Error('fetch timeout: ' + url)); }, ms);
+      }),
+    ]);
+  }
+
+  var _FETCH_TIMEOUT_MS = 6000;
+
   async function fetchAllData(month) {
     const prev = prevMonthStr(month);
     const responses = await Promise.all([
-      fetch('/api/occupancy/properties?month=' + month),
-      fetch('/api/occupancy/properties?month=' + prev),
-      fetch('/api/occupancy/units-monthly?month=' + month),
-      fetch('/api/occupancy/data-quality'),
-      fetch('/api/occupancy/settings/target'),
+      fetchWithTimeout('/api/occupancy/properties?month=' + month, _FETCH_TIMEOUT_MS),
+      fetchWithTimeout('/api/occupancy/properties?month=' + prev, _FETCH_TIMEOUT_MS),
+      fetchWithTimeout('/api/occupancy/units-monthly?month=' + month, _FETCH_TIMEOUT_MS),
+      fetchWithTimeout('/api/occupancy/data-quality', _FETCH_TIMEOUT_MS),
+      fetchWithTimeout('/api/occupancy/settings/target', _FETCH_TIMEOUT_MS),
     ]);
 
     // properties is required; others are best-effort
@@ -226,6 +237,7 @@
       INSIGHTS: INSIGHTS,
       DATA_QUALITY: DATA_QUALITY,
       helpers: {},
+      usingMock: false,
     };
   }
 
@@ -559,6 +571,7 @@
       PROPERTIES: PROPERTIES, UNITS: UNITS, PROPERTY_STATS: PROPERTY_STATS,
       PORTFOLIO: PORTFOLIO, INSIGHTS: INSIGHTS, DATA_QUALITY: DATA_QUALITY,
       helpers: {},
+      usingMock: true,
     };
   }
 })();

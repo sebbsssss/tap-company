@@ -1,0 +1,41 @@
+# fly.toml — tap-meter-intake (separate Fly app from tap-company)
+# Deploy: fly deploy --config skills/meter-reading-intake/fly.toml
+# Required secrets (set with fly secrets set -a tap-meter-intake):
+#   ZERNIO_API_KEY
+#   ANTHROPIC_API_KEY
+#   ERWAN_CONTACT_ID
+#   ERWAN_INBOX_ID
+#   WEBHOOK_CALLBACK_URL=https://tap-meter-intake.fly.dev/webhook/zernio
+
+app = 'tap-meter-intake'
+primary_region = 'sin'
+
+[build]
+  dockerfile = 'skills/meter-reading-intake/Dockerfile'
+
+[env]
+  # Default to dry-run; flip to 'false' once Zernio account is topped up + tested
+  METER_INTAKE_DRY_RUN = 'true'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = '15s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/healthz'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'
+
+[[mounts]]
+  source = 'meter_data'
+  destination = '/data/utility-logs'
+  initial_size = '1gb'

@@ -68,6 +68,16 @@ function KPI({ label, value, suffix, sub, subTone, accent }) {
   );
 }
 
+// -------- Data source banner -----------------------------------------
+function DataSourceBanner() {
+  return (
+    <div className="data-banner" role="alert" aria-live="polite">
+      <span className="data-banner__icon" aria-hidden="true">⚠</span>
+      {' '}Live data unavailable — showing reference data
+    </div>
+  );
+}
+
 // -------- Pct bar --------------------------------------------------
 function PctBar({ value, target }) {
   const pct = Math.max(0, Math.min(1, value));
