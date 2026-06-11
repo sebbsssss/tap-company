@@ -192,6 +192,13 @@ def append_reading(
     )
     wb.save(path)
 
+    # Upload canonical copy to Paperclip (non-blocking — import is lazy to avoid circular deps)
+    try:
+        from paperclip_uploader import upload_xlsx  # noqa: PLC0415
+        upload_xlsx(path)
+    except Exception:
+        pass  # upload failure must not interrupt the logging flow
+
     _log(
         "info",
         "reading_appended",
