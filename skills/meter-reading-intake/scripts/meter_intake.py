@@ -173,7 +173,7 @@ async def startup_log() -> None:
 
 @app.get("/healthz")
 async def healthz() -> dict:
-    return {"ok": True, "dry_run": _dry_run(), "version": "0.4.0"}
+    return {"ok": True, "dry_run": _dry_run(), "version": app.version}
 
 
 # ---------------------------------------------------------------------------
