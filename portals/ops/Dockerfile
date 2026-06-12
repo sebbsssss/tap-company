@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Build context is portals/ops/ (set via fly.toml build_context)
+# Build context is portals/ops/ — both backend/ and frontend/ are available
 WORKDIR /app
 
 COPY backend/requirements.txt .

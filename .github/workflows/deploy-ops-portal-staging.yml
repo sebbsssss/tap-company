@@ -1,0 +1,60 @@
+name: Deploy Ops Portal — Staging
+
+on:
+  push:
+    branches: [feat/ops-portal-frontend]
+    paths: ['portals/ops/**', '.github/workflows/deploy-ops-portal-staging.yml']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build + deploy tap-ops-portal-staging
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Fail fast if deploy token missing
+        run: |
+          if [ -z "${{ secrets.FLY_OPS_PORTAL_TOKEN }}" ]; then
+            echo "::error::FLY_OPS_PORTAL_TOKEN secret is not set. Add it in repo Settings → Secrets."
+            exit 1
+          fi
+
+      # Set CI-owned secrets (generated or pulled from GitHub secrets).
+      # Operator-owned secrets (OPS_PORTAL_ALLOWED_EMAILS, OPS_PORTAL_BOT_ENABLED)
+      # are never touched here — set them once with: fly secrets set -a tap-ops-portal-staging
+      - name: Set CI-owned secrets
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_OPS_PORTAL_TOKEN }}
+        run: |
+          SECRET_KEY=$(openssl rand -hex 32)
+          fly secrets set -a tap-ops-portal-staging \
+            CRM_API_KEY="${{ secrets.CRM_API_KEY }}" \
+            SECRET_KEY="$SECRET_KEY" \
+            --yes
+
+      - name: Deploy to staging
+        working-directory: portals/ops
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_OPS_PORTAL_TOKEN }}
+        run: |
+          fly deploy --config fly.staging.toml --remote-only --wait-timeout 120
+
+      - name: Verify health
+        run: |
+          echo "Waiting for machine to settle..."
+          sleep 15
+          echo "=== /healthz ==="
+          curl -sf https://tap-ops-portal-staging.fly.dev/healthz
+          echo ""
+          echo "=== Login page (HTTP 200 expected) ==="
+          STATUS=$(curl -so /dev/null -w "%{http_code}" https://tap-ops-portal-staging.fly.dev/)
+          echo "HTTP $STATUS"
+          [ "$STATUS" = "200" ] || (echo "::error::Login page returned HTTP $STATUS" && exit 1)
+          echo ""
+          echo "=== Deployment complete ==="
+          echo "Staging URL: https://tap-ops-portal-staging.fly.dev"

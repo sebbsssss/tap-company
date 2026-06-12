@@ -42,6 +42,25 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+async def _log_startup() -> None:
+    allowed_emails = [
+        e.strip() for e in os.environ.get("OPS_PORTAL_ALLOWED_EMAILS", "").split(",")
+        if e.strip()
+    ]
+    print(
+        json.dumps({
+            "event": "ops_portal_startup",
+            "allowed_emails_count": len(allowed_emails),
+            "bot_enabled": _bot_enabled(),
+            "crm_key_set": bool(
+                os.environ.get("CRM_API_KEY") or os.environ.get("CRM_STAFF_API_KEY")
+            ),
+        }),
+        flush=True,
+    )
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _require_session(ops_session: Optional[str]) -> str:
@@ -161,6 +180,7 @@ def _normalize_ticket(ticket: dict, comments: Optional[list] = None) -> dict:
 # ── Health ──────────────────────────────────────────────────────────────────────
 
 @app.get("/health", tags=["ops"])
+@app.get("/healthz", tags=["ops"])
 def health() -> dict:
     return {"status": "ok", "bot_enabled": _bot_enabled()}
 

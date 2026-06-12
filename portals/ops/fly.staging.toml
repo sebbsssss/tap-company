@@ -1,12 +1,12 @@
 # Staging config — app: tap-ops-portal-staging
-# Deploy: cd portals/ops && fly deploy --app tap-ops-portal-staging --config backend/fly.staging.toml
+# Deploy: cd portals/ops && fly deploy --config fly.staging.toml
+# Dockerfile is co-located (portals/ops/Dockerfile) — no path ambiguity.
 
 app = "tap-ops-portal-staging"
 primary_region = "sin"
 
 [build]
-  dockerfile = "backend/Dockerfile"
-  build_context = ".."
+  dockerfile = "Dockerfile"
 
 [env]
   OPS_PORTAL_BOT_ENABLED = "true"
@@ -37,6 +37,6 @@ primary_region = "sin"
   [[services.http_checks]]
     interval = "30s"
     timeout = "10s"
-    grace_period = "10s"
+    grace_period = "15s"
     method = "GET"
-    path = "/health"
+    path = "/healthz"

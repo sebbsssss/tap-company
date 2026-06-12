@@ -72,17 +72,17 @@ fly secrets set -a tap-ops-portal OPS_PORTAL_BOT_ENABLED=true
 
 ## Redeploying after a config change
 
-Most secret changes take effect without a redeploy (the app reads env vars at request time). Only code changes need a full deploy:
+CI deploys automatically on push to `feat/ops-portal-frontend`. For manual redeployment:
 
 ```bash
 # From the portals/ops/ directory:
-fly deploy --app tap-ops-portal --config backend/fly.toml
+fly deploy --app tap-ops-portal --config fly.toml
 
 # Or for staging:
-fly deploy --app tap-ops-portal-staging --config backend/fly.staging.toml
+fly deploy --app tap-ops-portal-staging --config fly.staging.toml
 ```
 
-The build context is `portals/ops/` (set in fly.toml), so the Dockerfile can access both `backend/` and `frontend/` during the build.
+`Dockerfile` and `fly.toml` are co-located at `portals/ops/` — the build context includes both `backend/` and `frontend/`.
 
 ---
 
@@ -100,23 +100,33 @@ The build context is `portals/ops/` (set in fly.toml), so the Dockerfile can acc
 | `SMTP_PASS` | No | SMTP password |
 | `OPS_PORTAL_FROM_EMAIL` | No | From address for magic-link emails |
 
-Without `SMTP_HOST`, magic links are logged to stderr and printed in the `/auth/magic-link` response — useful for staging.
+Without `SMTP_HOST`, magic links are written to stdout (visible in `fly logs -a tap-ops-portal-staging`) and returned in the `/auth/magic-link` JSON response — no SMTP needed for staging sign-in testing.
 
 ---
+
+## Secrets ownership
+
+| Secret | Owner | Set by CI? | Notes |
+|---|---|---|---|
+| `CRM_API_KEY` | CI | ✅ yes | From `CRM_API_KEY` GitHub secret |
+| `SECRET_KEY` | CI | ✅ yes | Generated `openssl rand -hex 32` each deploy |
+| `OPS_PORTAL_ALLOWED_EMAILS` | Operator | ❌ never | Set once: `fly secrets set -a <app> OPS_PORTAL_ALLOWED_EMAILS="..."` |
+| `OPS_PORTAL_BOT_ENABLED` | Operator | ❌ never | Defaults to `true`; toggle via `fly secrets set` |
+| `SMTP_*` | Operator | ❌ never | If unset, magic links are logged to `fly logs` (staging fallback) |
 
 ## Architecture
 
 ```
 portals/ops/
+├── Dockerfile          Docker build (context = portals/ops/)
+├── fly.toml            Production Fly config
+├── fly.staging.toml    Staging Fly config
 ├── backend/          FastAPI app (CRM proxy, auth, audit)
-│   ├── main.py       API routes
+│   ├── main.py       API routes + startup config log
 │   ├── auth.py       Magic-link + session (SQLite, /data/auth.db)
 │   ├── audit.py      Append-only audit log (/data/audit/*)
 │   ├── crm_client.py CRM API wrapper (60s cache)
-│   ├── models.py     Pydantic request models
-│   ├── Dockerfile    Build context: portals/ops/ (includes frontend/)
-│   ├── fly.toml      Production Fly config
-│   └── fly.staging.toml  Staging Fly config
+│   └── models.py     Pydantic request models
 └── frontend/         Vanilla HTML/CSS/JS (no build step)
     ├── index.html
     ├── styles.css
