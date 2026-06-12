@@ -44,8 +44,13 @@ jobs:
           PAPERCLIP_SERVICE_KEY: ${{ secrets.PAPERCLIP_SERVICE_KEY }}
           WEBHOOK_SECRET: ${{ secrets.ZERNIO_WEBHOOK_SECRET }}
         run: |
-          # ALLOWLISTED_NUMBERS is operator-owned — set manually:
+          # Operator-owned secrets (set manually, not in CI):
           #   flyctl secrets set ALLOWLISTED_NUMBERS="..." -a tap-meter-intake
+          #   flyctl secrets set IRWAN_CONVERSATION_ID="..." -a tap-meter-intake
+          #     (Irwan's conversation ID in Zernio — look up in the Zernio dashboard
+          #      or call: flyctl ssh console -a tap-meter-intake then:
+          #      curl -s -H "Authorization: Bearer $ZERNIO_API_KEY" \
+          #        "https://api.zernio.com/v1/inbox/conversations?limit=50" | jq '[.[].id]')
           flyctl secrets set \
             ZERNIO_API_KEY="$ZERNIO_API_KEY" \
             ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \

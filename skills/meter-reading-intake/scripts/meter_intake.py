@@ -53,6 +53,7 @@ from caption_parser import parse_caption
 from meter_calculator import extract_reading
 from query_handler import decline_message, handle_query, is_allowlisted, looks_like_query
 from utility_log import append_reading
+from daily_digest import start_digest_scheduler
 from sweeper import start_sweeper
 from zernio_client import _log, download_image, ensure_webhook, send_reply
 
@@ -164,6 +165,10 @@ async def startup_log() -> None:
         start_sweeper(_ack_event, _process_message, _dry_run)
     except Exception as exc:
         _log("error", "sweeper_start_failed", error=str(exc))
+    try:
+        start_digest_scheduler(_dry_run)
+    except Exception as exc:
+        _log("error", "digest_scheduler_start_failed", error=str(exc))
 
 
 # ---------------------------------------------------------------------------

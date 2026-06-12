@@ -17,12 +17,14 @@ import argparse
 import json
 import os
 import sys
-from datetime import date, datetime
-from typing import Optional
+import threading
+import time as _time
+from datetime import date, datetime, timedelta
+from typing import Callable, Optional
 from zoneinfo import ZoneInfo
 
 from utility_log import get_today_readings
-from zernio_client import send_reply
+from zernio_client import get_account_id, send_reply
 
 SGT = ZoneInfo("Asia/Singapore")
 
@@ -104,16 +106,53 @@ def build_digest(day: Optional[date] = None) -> str:
 
 
 def send_digest(dry_run: bool = True, day: Optional[date] = None) -> None:
-    contact_id = os.environ.get("IRWAN_CONTACT_ID", "")
-    inbox_id = os.environ.get("IRWAN_INBOX_ID", "")
+    """Send the daily digest to Irwan via Zernio.
 
-    if not dry_run and (not contact_id or not inbox_id):
-        _log("error", "IRWAN_CONTACT_ID and IRWAN_INBOX_ID must be set for live sends")
-        raise RuntimeError("IRWAN_CONTACT_ID / IRWAN_INBOX_ID not set")
+    Requires IRWAN_CONVERSATION_ID (Irwan's Zernio conversation ID, set manually once).
+    Account ID is resolved from /accounts API automatically.
+    """
+    conversation_id = os.environ.get("IRWAN_CONVERSATION_ID", "")
+
+    if not dry_run and not conversation_id:
+        _log("error", "digest_send_blocked", reason="IRWAN_CONVERSATION_ID not set")
+        raise RuntimeError(
+            "IRWAN_CONVERSATION_ID not set — "
+            "set via: flyctl secrets set IRWAN_CONVERSATION_ID=... -a tap-meter-intake"
+        )
 
     text = build_digest(day)
     _log("info", "daily_digest_ready", dry_run=dry_run, length=len(text))
-    send_reply(inbox_id or "ops", contact_id or "irwan", text, dry_run=dry_run)
+
+    account_id = get_account_id() if not dry_run else "dry-run"
+    send_reply(conversation_id or "dry-run-conv", account_id, text, dry_run=dry_run)
+
+
+def _seconds_until_1800() -> float:
+    """Seconds from now until the next 18:00 SGT."""
+    now = datetime.now(tz=SGT)
+    target = now.replace(hour=18, minute=0, second=0, microsecond=0)
+    if now >= target:
+        target += timedelta(days=1)
+    return (target - now).total_seconds()
+
+
+def start_digest_scheduler(dry_run_fn: Callable[[], bool]) -> threading.Thread:
+    """Daemon thread: fires send_digest every day at 18:00 SGT."""
+
+    def _loop() -> None:
+        _log("info", "digest_scheduler_started")
+        while True:
+            delay = _seconds_until_1800()
+            _log("info", "digest_next_fire", seconds_until=int(delay))
+            _time.sleep(delay)
+            try:
+                send_digest(dry_run=dry_run_fn())
+            except Exception as exc:
+                _log("error", "digest_send_failed", error=str(exc)[:200])
+
+    t = threading.Thread(target=_loop, name="meter-digest", daemon=True)
+    t.start()
+    return t
 
 
 if __name__ == "__main__":

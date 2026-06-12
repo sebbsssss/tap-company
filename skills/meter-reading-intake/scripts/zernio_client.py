@@ -17,6 +17,7 @@ import requests
 
 ZERNIO_BASE = "https://api.zernio.com/v1"
 _SESSION: Optional[requests.Session] = None
+_CACHED_ACCOUNT_ID: Optional[str] = None
 
 
 def _log(level: str, msg: str, **kwargs: object) -> None:
@@ -47,6 +48,28 @@ def _request(method: str, path: str, body: Optional[dict] = None, timeout: int =
         _log("error", "zernio_api_error", path=path, status=resp.status_code, detail=resp.text[:300])
         resp.raise_for_status()
     return resp.json()
+
+
+def get_account_id() -> str:
+    """Return the Zernio account ID (fetched from /accounts once, then cached)."""
+    global _CACHED_ACCOUNT_ID
+    if _CACHED_ACCOUNT_ID:
+        return _CACHED_ACCOUNT_ID
+    result = _request("GET", "/accounts")
+    accounts: list[dict] = []
+    if isinstance(result, list):
+        accounts = result
+    else:
+        for key in ("data", "accounts", "items", "results"):
+            if key in result and isinstance(result[key], list):
+                accounts = result[key]
+                break
+    if accounts:
+        _CACHED_ACCOUNT_ID = accounts[0].get("id") or accounts[0].get("_id") or ""
+    if not _CACHED_ACCOUNT_ID:
+        raise RuntimeError("Could not determine Zernio account ID from /accounts")
+    _log("info", "zernio_account_id_resolved", account_id_prefix=_CACHED_ACCOUNT_ID[:12])
+    return _CACHED_ACCOUNT_ID
 
 
 def list_webhooks() -> list[dict]:
