@@ -56,8 +56,8 @@ from utility_log import append_reading
 from sweeper import start_sweeper
 from zernio_client import _log, download_image, ensure_webhook, send_reply
 
-_GIT_SHA = "3f9a12c"  # updated per deploy
-app = FastAPI(title="tap-meter-intake", version="0.4.0")
+_GIT_SHA = "pending"  # updated per deploy
+app = FastAPI(title="tap-meter-intake", version="0.5.0")
 
 # ---------------------------------------------------------------------------
 # Event deduplication — prevents double-processing on Zernio retries
@@ -104,9 +104,12 @@ def _parse_event(event: dict) -> dict:
     Note: message.senderPhoneNumber and message.senderId are REST GET /messages fields
     only — they are NOT present in webhook payloads.
     """
-    msg = event.get("message") or {}
-    conv = event.get("conversation") or {}
-    acc = event.get("account") or {}
+    msg_raw = event.get("message")
+    msg = msg_raw if isinstance(msg_raw, dict) else {}
+    conv_raw = event.get("conversation")
+    conv = conv_raw if isinstance(conv_raw, dict) else {}
+    acc_raw = event.get("account")
+    acc = acc_raw if isinstance(acc_raw, dict) else {}
     sender = msg.get("sender") or {}
     phone = conv.get("participantUsername") or sender.get("id") or None
     sender_id = sender.get("id") or None
@@ -155,7 +158,7 @@ async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSON
 async def startup_log() -> None:
     allowlist_raw = os.environ.get("ALLOWLISTED_NUMBERS", "")
     count = len([n for n in allowlist_raw.split(",") if n.strip()]) if allowlist_raw else 0
-    _log("info", "app_startup", version="0.4.0", dry_run=_dry_run(), allowlist_count=count,
+    _log("info", "app_startup", version="0.5.0", dry_run=_dry_run(), allowlist_count=count,
          webhook_secret_set=bool(os.environ.get("WEBHOOK_SECRET")))
     try:
         start_sweeper(_ack_event, _process_message, _dry_run)
@@ -194,6 +197,14 @@ async def admin_register_webhook(request: Request) -> JSONResponse:
         _log("error", "register_webhook_failed", error=str(exc))
         raise HTTPException(502, f"Zernio API error: {exc}")
     return JSONResponse(result)
+
+
+@app.delete("/admin/state/{contact_id}")
+async def admin_delete_state(contact_id: str) -> JSONResponse:
+    """Delete a conversation state file by contact_id (purge ghost/test states)."""
+    cs.clear(contact_id)
+    _log("info", "admin_state_deleted", contact_id=contact_id)
+    return JSONResponse({"ok": True, "contact_id": contact_id})
 
 
 # ---------------------------------------------------------------------------
@@ -425,8 +436,10 @@ async def zernio_webhook(request: Request, background_tasks: BackgroundTasks) ->
         or body.get("event_type")
         or ""
     )
-    msg_keys = list((body.get("message") or {}).keys())
-    conv_keys = list((body.get("conversation") or {}).keys())
+    _bm = body.get("message")
+    msg_keys = list(_bm.keys()) if isinstance(_bm, dict) else []
+    _bc = body.get("conversation")
+    conv_keys = list(_bc.keys()) if isinstance(_bc, dict) else []
     _log("info", "webhook_received", event_type=event_type,
          msg_keys=msg_keys, conv_keys=conv_keys)
 

@@ -103,13 +103,20 @@ def send_reply(conversation_id: str, account_id: str, message: str, *, dry_run: 
     return result
 
 
-def list_conversation_messages(conversation_id: str, limit: int = 20) -> list[dict]:
+def list_conversation_messages(
+    conversation_id: str,
+    account_id: str,
+    limit: int = 20,
+) -> list[dict]:
     """Return recent messages for a conversation.
 
     Used by the sweeper to detect messages missed by webhook dispatch.
     Response may be a bare list or a paginated envelope — both handled.
     """
-    result = _request("GET", f"/inbox/conversations/{conversation_id}/messages?limit={limit}")
+    result = _request(
+        "GET",
+        f"/inbox/conversations/{conversation_id}/messages?accountId={account_id}&limit={limit}",
+    )
     if isinstance(result, list):
         return result
     for key in ("data", "messages", "items", "results"):

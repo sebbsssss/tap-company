@@ -75,11 +75,12 @@ def sweep_once(
         conv_id = state.get("conversation_id", "")
         contact_id = state.get("contact_id", "")
         account_id = state.get("account_id", "")
-        if not conv_id:
+        if not conv_id or not account_id:
+            _log("debug", "sweeper_skip_missing_ids", conv_id=conv_id[:24], contact_id=contact_id[:24])
             continue
 
         try:
-            messages = list_conversation_messages(conv_id, limit=20)
+            messages = list_conversation_messages(conv_id, account_id, limit=20)
         except Exception as exc:
             _log("warn", "sweeper_fetch_failed", conv_id=conv_id[:24], error=str(exc)[:120])
             continue
