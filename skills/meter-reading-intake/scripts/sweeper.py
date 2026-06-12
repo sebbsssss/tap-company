@@ -15,12 +15,49 @@ import json
 import os
 import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
 from zernio_client import _log, list_conversation_messages
 
 SWEEP_INTERVAL = 300  # 5 minutes
+_BACKLOG_CUTOFF_SECONDS = 1800  # 30 min — skip messages older than this without processing
+_ZERNIO_HOST = "https://api.zernio.com"  # base host for resolving relative attachment URLs
+
+
+def _abs_url(url: str) -> str:
+    """Prefix relative Zernio URLs with the host. REST responses use paths like /api/v1/..."""
+    if url and not url.startswith("http"):
+        return f"{_ZERNIO_HOST}{url}" if url.startswith("/") else url
+    return url
+
+
+def _fix_attachments(attachments: list[dict]) -> list[dict]:
+    """Ensure all attachment URLs are absolute."""
+    return [{**a, "url": _abs_url(a.get("url") or "")} for a in attachments]
+
+
+def _message_is_recent(msg: dict) -> bool:
+    """Return True if the message is within the backlog cutoff window (default 30 min).
+
+    Messages older than _BACKLOG_CUTOFF_SECONDS are silently skipped rather than
+    processed — prevents a backlog of missed messages flooding the system when auth
+    is restored after an outage.
+    """
+    ts_raw = msg.get("createdAt") or msg.get("timestamp") or msg.get("created_at")
+    if not ts_raw:
+        return True  # no timestamp — assume recent
+    try:
+        if isinstance(ts_raw, (int, float)):
+            # millis if > 1e12, else epoch seconds
+            ts = datetime.fromtimestamp(ts_raw / 1000 if ts_raw > 1e12 else ts_raw, tz=timezone.utc)
+        else:
+            ts = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
+        age = (datetime.now(tz=timezone.utc) - ts).total_seconds()
+        return age <= _BACKLOG_CUTOFF_SECONDS
+    except Exception:
+        return True  # parse failure — treat as recent
 
 
 def _build_synthetic_event(msg: dict, conv_id: str, contact_id: str, account_id: str) -> dict:
@@ -28,6 +65,7 @@ def _build_synthetic_event(msg: dict, conv_id: str, contact_id: str, account_id:
 
     REST messages carry senderId (no '+') and optionally senderPhoneNumber (with '+').
     Webhook events carry message.sender.id (no '+') and conversation.participantUsername (with '+').
+    Attachment URLs from REST may be relative paths — _fix_attachments resolves them.
     """
     sender_id = msg.get("senderId") or ""
     sender_phone = msg.get("senderPhoneNumber") or ""
@@ -37,7 +75,7 @@ def _build_synthetic_event(msg: dict, conv_id: str, contact_id: str, account_id:
         "message": {
             "id": msg.get("id") or "",
             "text": msg.get("text") or "",
-            "attachments": msg.get("attachments") or [],
+            "attachments": _fix_attachments(msg.get("attachments") or []),
             "sender": {"id": sender_id},
         },
         "conversation": {
@@ -93,6 +131,11 @@ def sweep_once(
             # Skip outbound messages (our own replies)
             direction = (msg.get("direction") or msg.get("type") or "").lower()
             if direction and "inbound" not in direction and "incoming" not in direction:
+                continue
+
+            # Skip backlog silently — don't mark in dedup cache so the check runs
+            # every cycle (cheap) without polluting the in-memory store with old IDs
+            if not _message_is_recent(msg):
                 continue
 
             sweep_event_id = f"sweep:{msg_id}"
