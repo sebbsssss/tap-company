@@ -45,6 +45,7 @@ from pathlib import Path
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+import conversation_brain as cb
 import conversation_state as cs
 from caption_parser import parse_caption
 from meter_calculator import extract_reading
@@ -261,71 +262,74 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
         send_reply(conversation_id, account_id, decline_message(), dry_run=dry_run)
         return
 
-    # --- query path ---
+    # --- query path (text-only messages with question keywords) ---
     if looks_like_query(text, has_image):
         _log("info", "query_path", contact_id=contact_id)
         reply = handle_query(text)
         send_reply(conversation_id, account_id, reply, dry_run=dry_run)
         return
 
-    # --- meter reading path: load or create conversation state ---
+    # --- meter reading path ---
     state = cs.load(contact_id) or cs.new_state(contact_id, conversation_id, account_id)
-    # Always refresh reply targets from the latest event
     state["conversation_id"] = conversation_id
     state["account_id"] = account_id
 
-    # If sender just replied to a retake request and provides a new image
-    if state.get("awaiting_retake") and has_image:
-        _clear_pending_image(state)
-        state["pending_image_url"] = _prefetch_image(contact_id, image_url, mime_type)
-        state["pending_mime"] = mime_type
-        state["awaiting_retake"] = False
+    # Persist image immediately — Zernio media URLs expire
+    if has_image:
+        if state.get("awaiting_retake"):
+            _clear_pending_image(state)
+            state["awaiting_retake"] = False
+        if not state.get("pending_image_url"):
+            state["pending_image_url"] = _prefetch_image(contact_id, image_url, mime_type)
+            state["pending_mime"] = mime_type
 
-    # Merge any new caption fields
+    # Fast-path regex pre-fill (best-effort; brain fills what regex misses)
     if text:
-        # YES confirmation for fuzzy property suggestion
-        _AFFIRMATIVE = {"yes", "y", "yep", "yeah", "correct", "right", "ok", "okay", "confirm", "si"}
-        if (state.get("fuzzy_property_suggestion")
-                and state["resolved"]["property"] is None
-                and text.lower().strip() in _AFFIRMATIVE):
-            state["resolved"]["property"] = state["fuzzy_property_suggestion"]
-            state["fuzzy_property_suggestion"] = None
-            state["property_ask_count"] = 0
-        else:
-            parsed = parse_caption(text)
-            state = cs.merge_parsed(state, parsed)
+        parsed = parse_caption(text)
+        state = cs.merge_parsed(state, parsed)
 
-    # Persist image immediately on first receipt (Zernio URLs expire)
-    if has_image and not state.get("pending_image_url"):
-        state["pending_image_url"] = _prefetch_image(contact_id, image_url, mime_type)
-        state["pending_mime"] = mime_type
+    # Record user turn before brain call so brain sees it in history context
+    cs.append_turn(state, "user", text or "(photo)")
 
-    # --- ask for missing fields one at a time ---
+    # --- LLM brain: single call extracts remaining fields + decides reply ---
+    brain = cb.process_turn(state, text, has_image)
+    cs.merge_brain(state, brain)
+
+    # Loop guard: if brain still couldn't resolve property after 2 asks, accept raw text
+    if (
+        state["resolved"]["property"] is None
+        and state.get("property_ask_count", 0) >= 2
+        and text.strip()
+    ):
+        state["resolved"]["property"] = text.strip().upper()
+        state["property_unverified"] = True
+        state["fuzzy_property_suggestion"] = None
+        state["property_ask_count"] = 0
+
+    # Determine whether we can proceed to extraction
     missing = cs.missing_fields(state)
-    if missing:
-        # Loop guard: after 2 property re-asks, accept raw text and flag as unverified
-        if "property" in missing and state.get("property_ask_count", 0) >= 2 and text:
-            state["resolved"]["property"] = text.strip().upper()
-            state["property_unverified"] = True
-            state["fuzzy_property_suggestion"] = None
-            state["property_ask_count"] = 0
-            missing = cs.missing_fields(state)
+    image_stored = bool(state.get("pending_image_url"))
 
-    if missing:
-        question = cs.next_question(missing, state)
+    if missing or not image_stored:
+        # Brain composes the reply; fall back to a generic combined question if null
+        reply_text = brain.get("reply_text")
+        if not reply_text:
+            if missing:
+                from caption_parser import ask_for_missing
+                reply_text = ask_for_missing(missing)
+            else:
+                reply_text = "Please send the meter photo."
+
         if "property" in missing:
             state["property_ask_count"] = state.get("property_ask_count", 0) + 1
+
+        state["last_question"] = reply_text
+        cs.append_turn(state, "assistant", reply_text)
         cs.save(state)
-        send_reply(conversation_id, account_id, question, dry_run=dry_run)
+        send_reply(conversation_id, account_id, reply_text, dry_run=dry_run)
         return
 
-    # --- we have all fields; need an image ---
-    if not state.get("pending_image_url"):
-        cs.save(state)
-        send_reply(conversation_id, account_id, "Please send the meter photo.", dry_run=dry_run)
-        return
-
-    # --- load image (local cache or remote URL fallback) ---
+    # --- all fields resolved AND image stored: load image ---
     try:
         image_bytes = _load_image_bytes(state["pending_image_url"])
     except Exception as exc:
@@ -335,7 +339,7 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
         send_reply(conversation_id, account_id, "Could not load the photo — please resend.", dry_run=dry_run)
         return
 
-    # --- extract reading ---
+    # --- extract reading via Claude vision ---
     calc = extract_reading(
         image_bytes,
         mime_type=state.get("pending_mime", "image/jpeg"),
@@ -348,7 +352,6 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
     current_reading = calc.get("reading")
     confidence = calc.get("confidence", "low")
 
-    # Low-confidence or unreadable → ask for retake
     if current_reading is None or confidence == "low":
         _log("warn", "low_confidence_retake", confidence=confidence, contact_id=contact_id)
         state["awaiting_retake"] = True
@@ -357,7 +360,7 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
         send_reply(conversation_id, account_id, LOW_CONFIDENCE_REPLY, dry_run=dry_run)
         return
 
-    # --- all good: append to utility log ---
+    # --- append to utility log ---
     reading_date = cs.get_resolved_date(state)
     if reading_date is None:
         from datetime import datetime
@@ -372,23 +375,16 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
         current_reading=float(current_reading),
     )
 
-    # Clear conversation state and cached image — this exchange is complete
     _clear_pending_image(state)
     cs.clear(contact_id)
 
-    # --- reply confirmation ---
     delta = row.get("delta")
-    if delta is not None:
-        delta_str = f"+{delta:.1f}" if float(delta) >= 0 else f"{delta:.1f}"
-    else:
-        delta_str = "? (first reading for this meter)"
-
-    unverified = state.get("property_unverified", False)
-    unverified_note = " *(property unverified — please confirm)*" if unverified else ""
+    delta_str = (f"+{delta:.1f}" if float(delta) >= 0 else f"{delta:.1f}") if delta is not None else "? (first reading)"
+    unverified_note = " *(property unverified — please confirm)*" if state.get("property_unverified") else ""
     confirmation = f"Logged: {row['property']} {row['utility_type']} {delta_str} (reading: {current_reading}){unverified_note}"
     send_reply(conversation_id, account_id, confirmation, dry_run=dry_run)
     _log("info", "reading_logged", property=row["property"], utility_type=row["utility_type"],
-         delta=delta, property_unverified=unverified)
+         delta=delta, property_unverified=state.get("property_unverified", False))
 
 
 @app.post("/webhook/zernio")

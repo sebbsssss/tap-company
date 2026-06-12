@@ -92,3 +92,81 @@ def test_next_question_property_first():
 def test_next_question_utility_when_property_resolved():
     q = cs.next_question(["utility_type", "reading_date"])
     assert "electric" in q.lower() or "water" in q.lower() or "gas" in q.lower()
+
+
+# ---------------------------------------------------------------------------
+# append_turn
+# ---------------------------------------------------------------------------
+
+def test_append_turn_adds_entries():
+    state = cs.new_state("c", "conv_1", "acc_1")
+    cs.append_turn(state, "user", "18JJ elec today")
+    cs.append_turn(state, "assistant", "Got it!")
+    assert len(state["turn_history"]) == 2
+    assert state["turn_history"][0] == {"role": "user", "content": "18JJ elec today"}
+    assert state["turn_history"][1] == {"role": "assistant", "content": "Got it!"}
+
+
+def test_append_turn_trims_to_max_pairs():
+    state = cs.new_state("c", "conv_1", "acc_1")
+    for i in range(8):
+        cs.append_turn(state, "user", f"msg {i}")
+        cs.append_turn(state, "assistant", f"reply {i}")
+    # max_pairs=6 → 12 entries max
+    assert len(state["turn_history"]) == 12
+
+
+def test_append_turn_new_state_starts_empty():
+    state = cs.new_state("c", "conv_1", "acc_1")
+    assert state["turn_history"] == []
+
+
+# ---------------------------------------------------------------------------
+# merge_brain
+# ---------------------------------------------------------------------------
+
+def test_merge_brain_fills_all_fields():
+    state = cs.new_state("c", "conv_1", "acc_1")
+    brain = {"property": "MILL@32", "utility": "electricity", "date": "2026-06-12", "missing_fields": []}
+    cs.merge_brain(state, brain)
+    assert state["resolved"]["property"] == "MILL@32"
+    assert state["resolved"]["utility_type"] == "electricity"
+    assert state["resolved"]["reading_date"] == "2026-06-12"
+
+
+def test_merge_brain_skips_null_fields():
+    state = cs.new_state("c", "conv_1", "acc_1")
+    state["resolved"]["property"] = "TLKR CAMPUS"
+    brain = {"property": None, "utility": "water", "date": None}
+    cs.merge_brain(state, brain)
+    # property and date unchanged
+    assert state["resolved"]["property"] == "TLKR CAMPUS"
+    assert state["resolved"]["reading_date"] is None
+    assert state["resolved"]["utility_type"] == "water"
+
+
+def test_merge_brain_overrides_regex_prefill():
+    state = cs.new_state("c", "conv_1", "acc_1")
+    state["resolved"]["utility_type"] = "water"  # wrong regex pre-fill
+    brain = {"property": None, "utility": "electricity", "date": None}
+    cs.merge_brain(state, brain)
+    assert state["resolved"]["utility_type"] == "electricity"
+
+
+def test_merge_brain_clears_fuzzy_on_property_set():
+    state = cs.new_state("c", "conv_1", "acc_1")
+    state["fuzzy_property_suggestion"] = "MILL@32"
+    state["property_ask_count"] = 1
+    brain = {"property": "MILL@32", "utility": None, "date": None}
+    cs.merge_brain(state, brain)
+    assert state["fuzzy_property_suggestion"] is None
+    assert state["property_ask_count"] == 0
+
+
+def test_merge_brain_today_resolves_to_iso_date():
+    state = cs.new_state("c", "conv_1", "acc_1")
+    brain = {"property": None, "utility": None, "date": "today"}
+    cs.merge_brain(state, brain)
+    # Should be an ISO date string, not the literal "today"
+    assert state["resolved"]["reading_date"] != "today"
+    assert len(state["resolved"]["reading_date"]) == 10  # YYYY-MM-DD

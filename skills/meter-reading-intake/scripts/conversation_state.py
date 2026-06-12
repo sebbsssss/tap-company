@@ -19,6 +19,8 @@ State schema:
     "pending_image_url": str|null,
     "pending_mime": str|null,
     "awaiting_retake": bool,        -- True when we asked for a clearer photo
+    "turn_history": list[dict],     -- [{role: "user"|"assistant", content: str}, ...]
+    "last_question": str|null,      -- last question we sent (context for LLM brain)
     "last_activity": str            -- ISO datetime (UTC)
   }
 """
@@ -99,6 +101,8 @@ def new_state(contact_id: str, conversation_id: str, account_id: str) -> dict:
         "pending_image_url": None,
         "pending_mime": "image/jpeg",
         "awaiting_retake": False,
+        "turn_history": [],
+        "last_question": None,
         "last_activity": _now_iso(),
     }
 
@@ -140,6 +144,38 @@ def missing_fields(state: dict) -> list[str]:
 
 def is_complete(state: dict) -> bool:
     return not missing_fields(state) and not state.get("awaiting_retake", False)
+
+
+def append_turn(state: dict, role: str, content: str, max_pairs: int = 6) -> None:
+    """Append a turn to history, keeping the last max_pairs user+assistant pairs."""
+    history = state.setdefault("turn_history", [])
+    history.append({"role": role, "content": content})
+    if len(history) > max_pairs * 2:
+        state["turn_history"] = history[-(max_pairs * 2):]
+
+
+def merge_brain(state: dict, brain: dict) -> dict:
+    """Merge LLM brain extraction results into state.
+
+    Brain values always win over regex pre-fill — the brain has more context.
+    Only updates a field if brain returned a non-null value.
+    """
+    from zoneinfo import ZoneInfo
+    from datetime import datetime as _dt
+    SGT = ZoneInfo("Asia/Singapore")
+
+    if brain.get("property"):
+        state["resolved"]["property"] = brain["property"]
+        state["fuzzy_property_suggestion"] = None
+        state["property_ask_count"] = 0
+    if brain.get("utility"):
+        state["resolved"]["utility_type"] = brain["utility"]
+    if brain.get("date"):
+        d = brain["date"]
+        if d == "today":
+            d = _dt.now(tz=SGT).date().isoformat()
+        state["resolved"]["reading_date"] = d
+    return state
 
 
 # ---------------------------------------------------------------------------
