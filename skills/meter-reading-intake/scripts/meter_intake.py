@@ -42,6 +42,8 @@ import time
 from datetime import date
 from pathlib import Path
 
+import traceback as _traceback
+
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
@@ -54,7 +56,8 @@ from utility_log import append_reading
 from sweeper import start_sweeper
 from zernio_client import _log, download_image, ensure_webhook, send_reply
 
-app = FastAPI(title="tap-meter-intake", version="0.3.0")
+_GIT_SHA = "3f9a12c"  # updated per deploy
+app = FastAPI(title="tap-meter-intake", version="0.4.0")
 
 # ---------------------------------------------------------------------------
 # Event deduplication — prevents double-processing on Zernio retries
@@ -140,13 +143,24 @@ def _first_image(attachments: list[dict]) -> tuple[str | None, str]:
 # ---------------------------------------------------------------------------
 
 
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    tb = _traceback.format_exc()
+    _log("error", "unhandled_500", path=str(request.url.path),
+         exc_type=type(exc).__name__, error=str(exc)[:300], traceback=tb[:800])
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
+
 @app.on_event("startup")
 async def startup_log() -> None:
     allowlist_raw = os.environ.get("ALLOWLISTED_NUMBERS", "")
     count = len([n for n in allowlist_raw.split(",") if n.strip()]) if allowlist_raw else 0
-    _log("info", "app_startup", dry_run=_dry_run(), allowlist_count=count,
+    _log("info", "app_startup", version="0.4.0", dry_run=_dry_run(), allowlist_count=count,
          webhook_secret_set=bool(os.environ.get("WEBHOOK_SECRET")))
-    start_sweeper(_ack_event, _process_message, _dry_run)
+    try:
+        start_sweeper(_ack_event, _process_message, _dry_run)
+    except Exception as exc:
+        _log("error", "sweeper_start_failed", error=str(exc))
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +170,7 @@ async def startup_log() -> None:
 
 @app.get("/healthz")
 async def healthz() -> dict:
-    return {"ok": True, "dry_run": _dry_run()}
+    return {"ok": True, "dry_run": _dry_run(), "version": "0.4.0"}
 
 
 # ---------------------------------------------------------------------------
