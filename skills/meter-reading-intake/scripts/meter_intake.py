@@ -50,6 +50,7 @@ from caption_parser import parse_caption
 from meter_calculator import extract_reading
 from query_handler import decline_message, handle_query, is_allowlisted, looks_like_query
 from utility_log import append_reading
+from sweeper import start_sweeper
 from zernio_client import _log, download_image, ensure_webhook, send_reply
 
 app = FastAPI(title="tap-meter-intake", version="0.3.0")
@@ -90,22 +91,21 @@ def _verify_hmac(raw_body: bytes, secret: str, sig_header: str) -> bool:
 def _parse_event(event: dict) -> dict:
     """Extract normalized fields from a Zernio message.received event.
 
-    Zernio payload shape (top-level):
-      message.senderPhoneNumber, message.senderId, message.text, message.attachments[]
+    Authoritative webhook payload shape (per Zernio OpenAPI spec):
+      message.sender.id              — phone WITHOUT '+'  (e.g. "6596370022")
+      conversation.participantUsername — phone WITH '+'   (e.g. "+6596370022")
       conversation.id, conversation.contactId
       account.id
+
+    Note: message.senderPhoneNumber and message.senderId are REST GET /messages fields
+    only — they are NOT present in webhook payloads.
     """
     msg = event.get("message") or {}
     conv = event.get("conversation") or {}
     acc = event.get("account") or {}
-    phone = (
-        msg.get("senderPhoneNumber")
-        or msg.get("senderId")
-        or conv.get("participantUsername")
-        or conv.get("participantId")
-        or None
-    )
-    sender_id = msg.get("senderId") or conv.get("participantId") or None
+    sender = msg.get("sender") or {}
+    phone = conv.get("participantUsername") or sender.get("id") or None
+    sender_id = sender.get("id") or None
     return {
         "phone": phone,
         "sender_id": sender_id,
@@ -145,6 +145,7 @@ async def startup_log() -> None:
     count = len([n for n in allowlist_raw.split(",") if n.strip()]) if allowlist_raw else 0
     _log("info", "app_startup", dry_run=_dry_run(), allowlist_count=count,
          webhook_secret_set=bool(os.environ.get("WEBHOOK_SECRET")))
+    start_sweeper(_ack_event, _process_message, _dry_run)
 
 
 # ---------------------------------------------------------------------------
