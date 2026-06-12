@@ -72,14 +72,18 @@ fly secrets set -a tap-ops-portal OPS_PORTAL_BOT_ENABLED=true
 
 ## Redeploying after a config change
 
-CI deploys automatically on push to `feat/ops-portal-frontend`. For manual redeployment:
+CI deploys automatically:
+- **Staging** — on push to `feat/ops-portal-frontend` (paths: `portals/ops/**`)
+- **Production** — on merge to `main` (paths: `portals/ops/**`)
+
+For manual redeployment:
 
 ```bash
 # From the portals/ops/ directory:
-fly deploy --app tap-ops-portal --config fly.toml
+flyctl deploy --app tap-ops-portal --config fly.toml
 
 # Or for staging:
-fly deploy --app tap-ops-portal-staging --config fly.staging.toml
+flyctl deploy --app tap-ops-portal-staging --config fly.staging.toml
 ```
 
 `Dockerfile` and `fly.toml` are co-located at `portals/ops/` — the build context includes both `backend/` and `frontend/`.
