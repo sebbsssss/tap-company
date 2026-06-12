@@ -32,7 +32,7 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_OPS_PORTAL_TOKEN }}
         run: |
           SECRET_KEY=$(openssl rand -hex 32)
-          fly secrets set -a tap-ops-portal-staging \
+          flyctl secrets set -a tap-ops-portal-staging \
             CRM_API_KEY="${{ secrets.CRM_API_KEY }}" \
             SECRET_KEY="$SECRET_KEY" \
             --yes
@@ -42,7 +42,7 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_OPS_PORTAL_TOKEN }}
         run: |
-          fly deploy --config fly.staging.toml --remote-only --wait-timeout 120
+          flyctl deploy --config fly.staging.toml --remote-only --wait-timeout 120
 
       - name: Verify health
         run: |
