@@ -31,6 +31,11 @@ FIXTURE_DIR = Path(__file__).parent / "fixtures"
         ("BlockA water 2026-06-11", "TLKR CAMPUS - BLOCK A", "water", date(2026, 6, 11)),
         # Uppercase mix
         ("18JLN ELEC 2026-06-11", "18 JALAN JINTAN", "electricity", date(2026, 6, 11)),
+        # BUG 2 regressions: ordinal date + electric synonym (Sebastien repro 2026-06-12)
+        ("MILL@32, 11th June, water", "MILL@32", "water", date(2026, 6, 11)),
+        ("MILL@32, today, electric", "MILL@32", "electricity", None),
+        ("18JJ electric 11th Jun", "18 JALAN JINTAN", "electricity", date(2026, 6, 11)),
+        ("51MR elec 1st June", "51 MIDDLE ROAD", "electricity", date(2026, 6, 1)),
     ],
 )
 def test_parse_caption_happy(caption, exp_property, exp_utility, exp_date):

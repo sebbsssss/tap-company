@@ -36,9 +36,11 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import sys
 import time
 from datetime import date
+from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -183,6 +185,54 @@ async def admin_register_webhook(request: Request) -> JSONResponse:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Image persistence — download on first receipt, cache to volume
+# ---------------------------------------------------------------------------
+
+
+def _image_cache_path(contact_id: str, mime_type: str) -> Path:
+    ext = ".png" if "png" in mime_type else ".jpg"
+    safe = re.sub(r"[^a-zA-Z0-9_-]", "_", contact_id)
+    d = Path(os.environ.get("METER_STATE_DIR", "/data/meter-intake-state"))
+    d.mkdir(parents=True, exist_ok=True)
+    return d / f"img_{safe}{ext}"
+
+
+def _prefetch_image(contact_id: str, image_url: str, mime_type: str) -> str:
+    """Download image immediately and save to volume. Returns local absolute path.
+
+    Falls back to returning the original URL if download fails, so the caller
+    always gets something to store in state.
+    """
+    try:
+        img_bytes = download_image(image_url)
+        path = _image_cache_path(contact_id, mime_type)
+        path.write_bytes(img_bytes)
+        _log("info", "image_cached_locally", path=str(path), bytes=len(img_bytes))
+        return str(path)
+    except Exception as exc:
+        _log("warn", "image_prefetch_failed", error=str(exc), fallback="url")
+        return image_url
+
+
+def _load_image_bytes(image_src: str) -> bytes:
+    """Read image from local path or remote URL."""
+    if os.path.isabs(image_src):
+        return Path(image_src).read_bytes()
+    return download_image(image_src)
+
+
+def _clear_pending_image(state: dict) -> None:
+    """Remove cached image file and clear state."""
+    src = state.get("pending_image_url") or ""
+    if os.path.isabs(src):
+        try:
+            Path(src).unlink(missing_ok=True)
+        except Exception:
+            pass
+    state["pending_image_url"] = None
+
+
 def _process_message(event: dict, dry_run: bool) -> None:  # noqa: C901
     """Background task (sync → Starlette runs in thread pool, never blocks the event loop)."""
     try:
@@ -225,7 +275,8 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
 
     # If sender just replied to a retake request and provides a new image
     if state.get("awaiting_retake") and has_image:
-        state["pending_image_url"] = image_url
+        _clear_pending_image(state)
+        state["pending_image_url"] = _prefetch_image(contact_id, image_url, mime_type)
         state["pending_mime"] = mime_type
         state["awaiting_retake"] = False
 
@@ -243,9 +294,9 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
             parsed = parse_caption(text)
             state = cs.merge_parsed(state, parsed)
 
-    # Store image if provided and none cached yet
+    # Persist image immediately on first receipt (Zernio URLs expire)
     if has_image and not state.get("pending_image_url"):
-        state["pending_image_url"] = image_url
+        state["pending_image_url"] = _prefetch_image(contact_id, image_url, mime_type)
         state["pending_mime"] = mime_type
 
     # --- ask for missing fields one at a time ---
@@ -273,13 +324,14 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
         send_reply(conversation_id, account_id, "Please send the meter photo.", dry_run=dry_run)
         return
 
-    # --- download image ---
+    # --- load image (local cache or remote URL fallback) ---
     try:
-        image_bytes = download_image(state["pending_image_url"])
+        image_bytes = _load_image_bytes(state["pending_image_url"])
     except Exception as exc:
-        _log("error", "image_download_failed", error=str(exc))
+        _log("error", "image_load_failed", src=state["pending_image_url"][:80], error=str(exc))
+        _clear_pending_image(state)
         cs.save(state)
-        send_reply(conversation_id, account_id, "Could not download the photo — please resend.", dry_run=dry_run)
+        send_reply(conversation_id, account_id, "Could not load the photo — please resend.", dry_run=dry_run)
         return
 
     # --- extract reading ---
@@ -299,7 +351,7 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
     if current_reading is None or confidence == "low":
         _log("warn", "low_confidence_retake", confidence=confidence, contact_id=contact_id)
         state["awaiting_retake"] = True
-        state["pending_image_url"] = None  # clear stale image
+        _clear_pending_image(state)
         cs.save(state)
         send_reply(conversation_id, account_id, LOW_CONFIDENCE_REPLY, dry_run=dry_run)
         return
@@ -319,7 +371,8 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
         current_reading=float(current_reading),
     )
 
-    # Clear conversation state — this exchange is complete
+    # Clear conversation state and cached image — this exchange is complete
+    _clear_pending_image(state)
     cs.clear(contact_id)
 
     # --- reply confirmation ---

@@ -19,6 +19,8 @@ primary_region = 'sin'
 [env]
   # Default to dry-run; flip to 'false' once Zernio account is topped up + tested
   METER_INTAKE_DRY_RUN = 'true'
+  # State dir on the persistent volume so cached images survive machine stop/start
+  METER_STATE_DIR = '/data/utility-logs/state'
 
 [http_service]
   internal_port = 8080

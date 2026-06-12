@@ -46,6 +46,7 @@ PROPERTY_ALIASES: dict[str, str] = {
 UTILITY_KEYWORDS: dict[str, str] = {
     "electricity": "electricity",
     "electrical": "electricity",
+    "electric": "electricity",
     "elec": "electricity",
     "power": "electricity",
     "water": "water",
@@ -173,12 +174,14 @@ def parse_caption(caption: str) -> dict[str, object]:
             except ValueError:
                 pass
 
-    # DD Mon (e.g. "11 Jun")
+    # DD Mon (e.g. "11 Jun", "11th Jun", "11th June")
     if not reading_date:
-        mon = re.search(r"\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b", text)
+        # Strip ordinal suffixes so "11th" → "11" before matching
+        text_no_ord = re.sub(r"\b(\d{1,2})(st|nd|rd|th)\b", r"\1", text)
+        mon = re.search(r"\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)", text_no_ord)
         if mon:
             try:
-                reading_date = date(today.year, MONTH_MAP[mon.group(2)], int(mon.group(1)))
+                reading_date = date(today.year, MONTH_MAP[mon.group(2)[:3]], int(mon.group(1)))
             except ValueError:
                 pass
 
