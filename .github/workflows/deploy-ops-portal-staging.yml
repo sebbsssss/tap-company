@@ -34,8 +34,7 @@ jobs:
           SECRET_KEY=$(openssl rand -hex 32)
           flyctl secrets set -a tap-ops-portal-staging \
             CRM_API_KEY="${{ secrets.CRM_API_KEY }}" \
-            SECRET_KEY="$SECRET_KEY" \
-            --yes
+            SECRET_KEY="$SECRET_KEY"
 
       - name: Deploy to staging
         working-directory: portals/ops
