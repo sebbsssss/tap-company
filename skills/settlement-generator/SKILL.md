@@ -31,6 +31,7 @@ The skill picks the right format from the property's `property_kind` field in th
 - `CRM_API_BASE` — defaults to `https://crm-api.theassemblyplace.com`
 - `XERO_ACCESS_TOKEN` + `XERO_TENANT_ID` — for the entity being settled (TAP Co-Livings is UEN 202300680H; TLKR is 201901964D)
 - Output destination: `SETTLEMENT_OUTPUT_DIR` — Google Drive folder ID (or local path for testing)
+- `ANTHROPIC_API_KEY` — required when `--gmail-search` is used (Claude Haiku inference per email)
 
 ## Inputs the user provides
 
@@ -168,18 +169,24 @@ python3 ./scripts/settlement.py \
 
 The output xlsx gains a **Gmail Auto-Source** audit sheet listing which emails were found and what amounts were parsed.
 
-### Email format
+### How inference works
 
-Finance team sends emails to `jarvis.ai@theassemblyplace.com`. The parser looks for lines containing:
-- **Cleaning**: line contains "cleaning" + a dollar amount (e.g. `$720`, `S$720`, `SGD 720.00`)
-- **Servicing**: line contains "servicing", "maintenance", "repair", "aircon", "pest", or "plumb" + a dollar amount
+Finance team emails actuals to `jarvis.ai@theassemblyplace.com`. Subject lines and senders are **not** matched — the system uses LLM inference (Claude Haiku) instead:
 
-Multiple servicing items (on separate lines) are supported — each gets its own row in the settlement letter.
+1. **Broad pull**: all emails received in `[month start − 7 days, month end + 14 days]` are fetched (up to 50 per run). No subject/sender filters.
+2. **Per-email inference**: Claude Haiku reads each email (body + PDF/xlsx attachments) and returns structured JSON:
+   - `is_relevant` — is this a settlement-related Finance email?
+   - `property_name` — which property does it refer to (as written)?
+   - `cleaning` — cleaning charge in SGD (null if not mentioned)
+   - `servicing_items` — list of `{description, amount}` for each servicing line item
+3. **Property matching**: the inferred property name is normalised and matched against the target. Emails mentioning a different property are skipped.
+4. **Aggregation**: cleaning totals and servicing items are summed across all matching emails (a property's settlement may span multiple emails).
 
-**Open questions for Finance (pending Sebastien confirmation):**
-- Exact email subject/sender convention (so search query can be tightened)
-- Whether multiple servicing items can span multiple emails per month
-- Whether the $720/month cleaning standing table (`property_defaults.json`) is now fully superseded by per-month actuals
+**Attachment support**: PDF and xlsx attachments are parsed and included in the inference context. Up to 3 PDFs per email are sent to Claude as documents.
+
+**Robust to**: arbitrary subjects, multiple Finance senders, forwarded threads, varied phrasing ("cleaning charge", "cleaner", "house cleaning"), and multiple emails per property per month.
+
+**Required additional env var**: `ANTHROPIC_API_KEY` — used for Claude Haiku inference calls.
 
 ## Validation history
 

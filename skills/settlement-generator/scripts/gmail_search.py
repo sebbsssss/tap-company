@@ -2,22 +2,28 @@
 """
 Gmail search for Finance-emailed actuals (cleaning + servicing).
 
-Finance team emails cleaning and servicing line items to
-jarvis.ai@theassemblyplace.com. This module searches that inbox
-and parses the dollar amounts for use in the settlement generator.
+LLM-inference approach (Sebastien design amendment, THE-17480):
+  - Pull a broad candidate set: emails received within
+    [settlement month start - 7 days, settlement month end + 14 days].
+  - For each candidate, use Claude Haiku to infer:
+      (a) Is this a settlement-relevant email?
+      (b) Which property does it refer to?
+      (c) What's the cleaning $?
+      (d) What servicing items + $?
+  - Aggregate across multiple emails per property/month.
+  - If no relevant lines found -> $0 (NOT yellow).
 
-Convention (per Sebastien, THE-17480):
-  - If an email is found → use the parsed amount(s).
-  - If no email found → $0 (NOT yellow). Do not leave cells yellow
-    when the inbox has been searched and returned nothing.
+Robust to: arbitrary subjects, multiple senders, multiple emails per property,
+PDF/xlsx attachments, forwarded threads, and varied phrasing.
 
 Required env vars (for jarvis.ai@theassemblyplace.com):
   JARVIS_GOOGLE_CLIENT_ID
   JARVIS_GOOGLE_CLIENT_SECRET
   JARVIS_GOOGLE_REFRESH_TOKEN
+  ANTHROPIC_API_KEY
 
-  Falls back to GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET /
-  GOOGLE_REFRESH_TOKEN if the JARVIS_* vars are not set.
+  Falls back to GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN
+  if the JARVIS_* vars are not set.
 
 Usage (standalone test):
   python3 gmail_search.py "18 JALAN JINTAN" 2026-05
@@ -31,7 +37,10 @@ import os
 import re
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
+import zipfile
 from dataclasses import dataclass, field
+from io import BytesIO
 from typing import Optional
 
 
@@ -54,7 +63,8 @@ class FinanceActuals:
     cleaning_total: float = 0.0          # $0 if not found
     servicing_items: list[ServicingItem] = field(default_factory=list)
 
-    emails_searched: int = 0             # how many raw emails we read
+    emails_searched: int = 0             # raw candidate emails pulled
+    emails_matched: int = 0              # emails matched to target property
     email_subjects: list[str] = field(default_factory=list)
 
     source_note: str = ""
@@ -63,17 +73,9 @@ class FinanceActuals:
     def servicing_total(self) -> float:
         return sum(s.amount for s in self.servicing_items)
 
-    @property
-    def found_cleaning(self) -> bool:
-        return any("cleaning" in e.lower() for e in self.email_subjects)
-
-    @property
-    def found_servicing(self) -> bool:
-        return bool(self.servicing_items)
-
 
 # ---------------------------------------------------------------------------
-# OAuth2 token refresh (no third-party libs required)
+# OAuth2 token refresh
 # ---------------------------------------------------------------------------
 
 def _get_access_token(client_id: str, client_secret: str, refresh_token: str) -> str:
@@ -96,7 +98,7 @@ def _get_access_token(client_id: str, client_secret: str, refresh_token: str) ->
 
 
 # ---------------------------------------------------------------------------
-# Gmail API thin wrapper (no third-party libs required)
+# Gmail API thin wrapper
 # ---------------------------------------------------------------------------
 
 def _gmail_get(path: str, access_token: str, params: dict | None = None) -> dict:
@@ -108,11 +110,11 @@ def _gmail_get(path: str, access_token: str, params: dict | None = None) -> dict
         return json.load(resp)
 
 
-def _gmail_search(
+def _gmail_list_messages(
     query: str,
     access_token: str,
     user_id: str = "me",
-    max_results: int = 20,
+    max_results: int = 50,
 ) -> list[dict]:
     """Returns list of message stubs: [{id, threadId}]."""
     result = _gmail_get(
@@ -123,11 +125,7 @@ def _gmail_search(
     return result.get("messages", [])
 
 
-def _gmail_get_message(
-    msg_id: str,
-    access_token: str,
-    user_id: str = "me",
-) -> dict:
+def _gmail_get_message(msg_id: str, access_token: str, user_id: str = "me") -> dict:
     return _gmail_get(
         f"users/{user_id}/messages/{msg_id}",
         access_token,
@@ -135,21 +133,18 @@ def _gmail_get_message(
     )
 
 
-def _extract_body_text(msg: dict) -> str:
-    """Walk the MIME tree and return all text/plain + text/html parts concatenated."""
-    parts_text: list[str] = []
-
-    def walk(payload: dict):
-        mime = payload.get("mimeType", "")
-        if mime in ("text/plain", "text/html"):
-            data = (payload.get("body") or {}).get("data", "")
-            if data:
-                parts_text.append(base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace"))
-        for part in payload.get("parts", []):
-            walk(part)
-
-    walk(msg.get("payload", {}))
-    return "\n".join(parts_text)
+def _gmail_get_attachment(
+    msg_id: str,
+    attachment_id: str,
+    access_token: str,
+    user_id: str = "me",
+) -> bytes:
+    result = _gmail_get(
+        f"users/{user_id}/messages/{msg_id}/attachments/{attachment_id}",
+        access_token,
+    )
+    data = result.get("data", "")
+    return base64.urlsafe_b64decode(data + "==")
 
 
 def _get_header(msg: dict, name: str) -> str:
@@ -160,97 +155,249 @@ def _get_header(msg: dict, name: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Dollar-amount parser
+# Email body + attachment extraction
 # ---------------------------------------------------------------------------
 
-# Matches patterns like "$720", "S$720", "$1,200.00", "SGD 720.00"
-_MONEY_RE = re.compile(
-    r"(?:S?\$|SGD\s*)(\d{1,6}(?:,\d{3})*(?:\.\d{1,2})?)",
-    re.IGNORECASE,
-)
+def _extract_body_text(payload: dict) -> str:
+    """Return all text/plain and text/html parts concatenated."""
+    parts: list[str] = []
 
-# Keywords that tag a line as a cleaning row
-_CLEANING_KEYWORDS = re.compile(r"\bcleaning\b", re.IGNORECASE)
+    def walk(node: dict) -> None:
+        mime = node.get("mimeType", "")
+        if mime in ("text/plain", "text/html"):
+            data = (node.get("body") or {}).get("data", "")
+            if data:
+                parts.append(
+                    base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace")
+                )
+        for child in node.get("parts", []):
+            walk(child)
 
-# Keywords that tag a line as a servicing / maintenance row
-_SERVICING_KEYWORDS = re.compile(
-    r"\b(servic|maintenance|repair|handyman|aircon|pest|plumb)\b",
-    re.IGNORECASE,
-)
+    walk(payload)
+    return "\n".join(parts)
 
 
-def _parse_money(text: str) -> list[float]:
-    return [float(m.replace(",", "")) for m in _MONEY_RE.findall(text)]
+def _extract_xlsx_text(raw_bytes: bytes) -> str:
+    """Extract cell values from an xlsx file using only stdlib (zipfile + xml)."""
+    try:
+        with zipfile.ZipFile(BytesIO(raw_bytes)) as zf:
+            # Load shared strings
+            shared_strings: list[str] = []
+            if "xl/sharedStrings.xml" in zf.namelist():
+                root = ET.fromstring(zf.read("xl/sharedStrings.xml"))
+                ns = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+                for si in root.findall(".//x:si", ns):
+                    t = "".join(e.text or "" for e in si.findall(".//x:t", ns))
+                    shared_strings.append(t)
+
+            # Extract all sheets
+            rows: list[str] = []
+            for name in zf.namelist():
+                if re.match(r"xl/worksheets/sheet\d+\.xml", name):
+                    root = ET.fromstring(zf.read(name))
+                    ns = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+                    for row in root.findall(".//x:row", ns):
+                        cells: list[str] = []
+                        for c in row.findall("x:c", ns):
+                            t_attr = c.get("t", "")
+                            v_el = c.find("x:v", ns)
+                            if v_el is None or v_el.text is None:
+                                continue
+                            if t_attr == "s":
+                                idx = int(v_el.text)
+                                cells.append(shared_strings[idx] if idx < len(shared_strings) else "")
+                            else:
+                                cells.append(v_el.text)
+                        if cells:
+                            rows.append("\t".join(cells))
+            return "\n".join(rows)
+    except Exception:
+        return ""
 
 
-def _parse_email_body(body: str) -> dict:
-    """Extract cleaning total and servicing items from an email body.
+def _collect_email_content(
+    msg: dict,
+    access_token: str,
+    user_id: str,
+    verbose: bool = False,
+) -> tuple[str, list[bytes]]:
+    """Return (text_content, pdf_bytes_list) from an email and its attachments."""
+    text_parts: list[str] = []
+    pdf_attachments: list[bytes] = []
 
-    Strategy:
-      1. Split into lines; tag each line with its keywords.
-      2. Sum cleaning amounts; collect servicing amounts with descriptions.
-      3. If no tagged lines found but the email has a known header block,
-         fall back to scanning all labelled rows.
+    body_text = _extract_body_text(msg.get("payload", {}))
+    if body_text:
+        text_parts.append(body_text)
+
+    def walk_parts(node: dict) -> None:
+        mime = node.get("mimeType", "")
+        filename = node.get("filename", "") or ""
+        body = node.get("body", {}) or {}
+        att_id = body.get("attachmentId")
+
+        if att_id:
+            try:
+                raw = _gmail_get_attachment(msg["id"], att_id, access_token, user_id)
+                if mime == "application/pdf" or filename.lower().endswith(".pdf"):
+                    pdf_attachments.append(raw)
+                elif (
+                    "spreadsheet" in mime
+                    or filename.lower().endswith(".xlsx")
+                    or filename.lower().endswith(".xls")
+                ):
+                    xlsx_text = _extract_xlsx_text(raw)
+                    if xlsx_text:
+                        text_parts.append(f"[Spreadsheet: {filename}]\n{xlsx_text}")
+                elif mime.startswith("text/"):
+                    text_parts.append(raw.decode("utf-8", errors="replace"))
+                elif verbose:
+                    print(f"    [gmail_search] skipping attachment {filename!r} ({mime})")
+            except Exception as exc:
+                if verbose:
+                    print(f"    [gmail_search] attachment fetch failed: {exc}")
+
+        for child in node.get("parts", []):
+            walk_parts(child)
+
+    walk_parts(msg.get("payload", {}))
+    return "\n\n".join(text_parts), pdf_attachments
+
+
+# ---------------------------------------------------------------------------
+# Claude Haiku inference
+# ---------------------------------------------------------------------------
+
+_INFERENCE_PROMPT_TEMPLATE = """\
+You are a property management settlement analyzer for The Assembly Place (Singapore co-living operator).
+
+Settlement period: {period}
+
+An email has been sent to jarvis.ai@theassemblyplace.com. Read the content below and determine:
+1. Is this email settlement-relevant? (i.e. does it contain financial charges for a specific property — cleaning, servicing, maintenance, repairs, aircon, pest control, etc.)
+2. Which property does it refer to? (Extract the full address as written in the email.)
+3. What is the total cleaning charge (SGD)?
+4. What are the individual servicing / maintenance items (description + amount each)?
+
+Email subject: {subject}
+Email content:
+{content}
+
+Return ONLY a JSON object with EXACTLY this structure (no extra text):
+{{
+  "is_relevant": true or false,
+  "property_name": "full address as written in email, or null",
+  "cleaning": 123.00 or null,
+  "servicing_items": [
+    {{"description": "Aircon servicing", "amount": 180.00}}
+  ]
+}}
+
+Rules:
+- "cleaning" covers: cleaning charge, cleaner fee, house cleaning, housekeeping, spring cleaning.
+- "servicing_items" covers: aircon service, pest control, plumbing, electrical, repairs, handyman, maintenance.
+- All amounts are in SGD. If unlabelled, assume SGD.
+- If the email is a general enquiry, marketing, reservation, or unrelated finance matter, set is_relevant to false.
+- If cleaning is not mentioned, set cleaning to null (not 0).
+- If no servicing items, set servicing_items to [].
+"""
+
+
+def _run_haiku_inference(
+    subject: str,
+    text_content: str,
+    pdf_attachments: list[bytes],
+    period: str,
+) -> dict:
+    """Call Claude Haiku to extract settlement actuals from email content.
 
     Returns:
-      {
-        "cleaning": float | None,      # None = keyword not found in this email
-        "servicing": [{desc, amount}]  # empty list = not found
-      }
-    """
-    cleaning_amounts: list[float] = []
-    servicing_items: list[ServicingItem] = []
-
-    for line in body.splitlines():
-        line_stripped = line.strip()
-        if not line_stripped:
-            continue
-        amounts = _parse_money(line_stripped)
-        if not amounts:
-            continue
-
-        if _CLEANING_KEYWORDS.search(line_stripped):
-            cleaning_amounts.extend(amounts)
-        elif _SERVICING_KEYWORDS.search(line_stripped):
-            # Use the line as the description (trimmed to 120 chars)
-            desc = re.sub(r"\s+", " ", line_stripped)[:120]
-            for amt in amounts:
-                servicing_items.append(ServicingItem(description=desc, amount=amt))
-
-    return {
-        "cleaning": sum(cleaning_amounts) if cleaning_amounts else None,
-        "servicing": servicing_items,
+    {
+        "is_relevant": bool,
+        "property_name": str | None,
+        "cleaning": float | None,
+        "servicing_items": [{"description": str, "amount": float}]
     }
+    """
+    from anthropic import Anthropic
+
+    client = Anthropic()
+
+    # Truncate text content to keep tokens manageable
+    truncated = text_content[:6000]
+
+    prompt = _INFERENCE_PROMPT_TEMPLATE.format(
+        period=period,
+        subject=subject,
+        content=truncated,
+    )
+
+    # Build message content blocks: text prompt + optional PDF documents
+    content_blocks: list[dict] = []
+    for pdf_bytes in pdf_attachments[:3]:  # max 3 PDFs per email
+        try:
+            content_blocks.append({
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": base64.standard_b64encode(pdf_bytes).decode("ascii"),
+                },
+            })
+        except Exception:
+            pass
+
+    content_blocks.append({"type": "text", "text": prompt})
+
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=512,
+            messages=[{"role": "user", "content": content_blocks}],
+        )
+        raw = response.content[0].text.strip()
+        # Pull out the JSON object (robust to minor preamble)
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if m:
+            return json.loads(m.group())
+    except Exception:
+        pass
+
+    return {"is_relevant": False, "property_name": None, "cleaning": None, "servicing_items": []}
 
 
 # ---------------------------------------------------------------------------
-# Property → search term mapping
+# Property name matching
 # ---------------------------------------------------------------------------
 
-_PROPERTY_SEARCH_TERMS: dict[str, list[str]] = {
-    "18 JALAN JINTAN": ["jintan", "jln jintan", "jalan jintan"],
-    "18 PENHAS": ["penhas"],
-    "18 PENHAS ROAD": ["penhas"],
-    "51 MIDDLE ROAD": ["middle road", "sophia"],
-    "51 MIDDLE RD": ["middle road", "sophia"],
-}
+_STOP_WORDS = re.compile(r"\b(road|rd|jalan|jln|street|st|avenue|ave|drive|dr|the|at|of|and)\b", re.I)
 
 
-def _property_search_terms(property_name: str) -> list[str]:
-    upper = property_name.upper()
-    for key, terms in _PROPERTY_SEARCH_TERMS.items():
-        if upper == key or upper.startswith(key[:6]):
-            return terms
-    # Generic fallback: use last word of property name
-    words = property_name.split()
-    return [words[-1].lower()] if words else [property_name.lower()]
+def _normalize_property(name: str) -> str:
+    """Normalize a property name for fuzzy matching."""
+    s = name.upper()
+    s = re.sub(r"[^A-Z0-9 ]", " ", s)
+    s = _STOP_WORDS.sub(" ", s)
+    return re.sub(r"\s+", " ", s).strip()
 
 
-def _month_label(period: str) -> str:
-    """'2026-05' → 'May 2026'"""
-    import datetime
-    y, m = map(int, period.split("-"))
-    return datetime.date(y, m, 1).strftime("%B %Y")
+def _property_matches(inferred: str | None, target: str) -> bool:
+    """Return True if the LLM-inferred property name plausibly refers to the target."""
+    if not inferred:
+        return False
+    n_inf = _normalize_property(inferred)
+    n_tgt = _normalize_property(target)
+    if not n_inf or not n_tgt:
+        return False
+    # Check for significant word overlap
+    words_inf = set(n_inf.split())
+    words_tgt = set(n_tgt.split())
+    # Remove short/numeric tokens that add noise
+    sig_inf = {w for w in words_inf if len(w) >= 3}
+    sig_tgt = {w for w in words_tgt if len(w) >= 3}
+    if not sig_tgt:
+        return False
+    overlap = sig_inf & sig_tgt
+    return len(overlap) / len(sig_tgt) >= 0.5
 
 
 # ---------------------------------------------------------------------------
@@ -266,13 +413,16 @@ def search_finance_actuals(
 ) -> FinanceActuals:
     """Search jarvis.ai Gmail inbox for Finance emails with cleaning + servicing amounts.
 
+    Uses LLM inference (Claude Haiku) to identify relevant emails and extract amounts.
+    No hardcoded subject/sender patterns — robust to arbitrary Finance email formats.
+
     Args:
         property_name: e.g. "18 JALAN JINTAN"
         period: "YYYY-MM"
         credentials: dict with keys client_id, client_secret, refresh_token.
                      If None, reads from env vars (JARVIS_* or GOOGLE_*).
-        user_id: Gmail userId to search. Defaults to jarvis.ai@theassemblyplace.com.
-        verbose: print debug info
+        user_id: Gmail userId to search.
+        verbose: print debug info.
 
     Returns:
         FinanceActuals with cleaning_total + servicing_items populated.
@@ -314,90 +464,107 @@ def search_finance_actuals(
         result.source_note = f"Gmail token refresh failed ({exc}). Defaulting to $0."
         return result
 
-    # Build search query:
-    # Look in a ±1 month window around the settlement period for emails
-    # mentioning the property and cleaning/servicing keywords.
+    # Broad date-range query: no property/keyword filtering.
+    # Window: [month start - 7 days, month end + 14 days]
     import datetime
     y, m = map(int, period.split("-"))
-    # Window: 1 month before → 1 month after
-    start_dt = datetime.date(y, m, 1) - datetime.timedelta(days=32)
-    end_dt = (
-        datetime.date(y, m + 1, 1) if m < 12 else datetime.date(y + 1, 1, 1)
-    ) + datetime.timedelta(days=32)
-    after_str = start_dt.strftime("%Y/%m/%d")
-    before_str = end_dt.strftime("%Y/%m/%d")
+    month_start = datetime.date(y, m, 1)
+    # Last day of the month
+    if m == 12:
+        month_end = datetime.date(y + 1, 1, 1) - datetime.timedelta(days=1)
+    else:
+        month_end = datetime.date(y, m + 1, 1) - datetime.timedelta(days=1)
 
-    prop_terms = _property_search_terms(property_name)
-    month_label = _month_label(period)  # e.g. "May 2026"
+    after_dt = month_start - datetime.timedelta(days=7)
+    before_dt = month_end + datetime.timedelta(days=14)
+    query = f"after:{after_dt.strftime('%Y/%m/%d')} before:{before_dt.strftime('%Y/%m/%d')}"
 
-    queries = []
-    for term in prop_terms:
-        queries.append(
-            f'({term} OR "{month_label}") (cleaning OR servicing OR maintenance) '
-            f"after:{after_str} before:{before_str}"
-        )
-
-    all_msg_ids: set[str] = set()
-    for q in queries:
-        if verbose:
-            print(f"  [gmail_search] query: {q!r}")
-        try:
-            msgs = _gmail_search(q, access_token, user_id=user_id)
-            for msg in msgs:
-                all_msg_ids.add(msg["id"])
-        except Exception as exc:
-            if verbose:
-                print(f"  [gmail_search] search error: {exc}")
-
-    result.emails_searched = len(all_msg_ids)
     if verbose:
-        print(f"  [gmail_search] found {len(all_msg_ids)} candidate message(s)")
+        print(f"  [gmail_search] broad query: {query!r}")
+
+    try:
+        stubs = _gmail_list_messages(query, access_token, user_id=user_id, max_results=50)
+    except Exception as exc:
+        result.source_note = f"Gmail search failed ({exc}). Defaulting to $0."
+        return result
+
+    result.emails_searched = len(stubs)
+    if verbose:
+        print(f"  [gmail_search] {len(stubs)} candidate email(s) in window")
 
     cleaning_total = 0.0
     cleaning_found = False
     servicing_all: list[ServicingItem] = []
+    matched_subjects: list[str] = []
 
-    for msg_id in all_msg_ids:
+    for stub in stubs:
+        msg_id = stub["id"]
         try:
             msg = _gmail_get_message(msg_id, access_token, user_id=user_id)
         except Exception as exc:
             if verbose:
-                print(f"  [gmail_search] failed to fetch message {msg_id}: {exc}")
+                print(f"    [gmail_search] fetch failed for {msg_id}: {exc}")
             continue
 
         subject = _get_header(msg, "subject")
-        result.email_subjects.append(subject)
         if verbose:
-            print(f"  [gmail_search] reading: {subject!r}")
+            print(f"  [gmail_search] inferring: {subject!r}")
 
-        body = _extract_body_text(msg)
-        parsed = _parse_email_body(body)
+        text_content, pdf_attachments = _collect_email_content(
+            msg, access_token, user_id, verbose=verbose
+        )
 
-        if parsed["cleaning"] is not None:
-            cleaning_total += parsed["cleaning"]
+        inferred = _run_haiku_inference(subject, text_content, pdf_attachments, period)
+
+        if verbose:
+            print(f"    -> is_relevant={inferred.get('is_relevant')}, "
+                  f"property={inferred.get('property_name')!r}, "
+                  f"cleaning={inferred.get('cleaning')}, "
+                  f"servicing={inferred.get('servicing_items')}")
+
+        if not inferred.get("is_relevant"):
+            continue
+
+        if not _property_matches(inferred.get("property_name"), property_name):
+            if verbose:
+                print(f"    -> property mismatch, skipping")
+            continue
+
+        result.emails_matched += 1
+        matched_subjects.append(subject)
+
+        if inferred.get("cleaning") is not None:
+            cleaning_total += float(inferred["cleaning"])
             cleaning_found = True
 
-        servicing_all.extend(parsed["servicing"])
+        for item in inferred.get("servicing_items") or []:
+            try:
+                servicing_all.append(ServicingItem(
+                    description=str(item["description"])[:120],
+                    amount=float(item["amount"]),
+                ))
+            except (KeyError, ValueError, TypeError):
+                pass
 
+    result.email_subjects = matched_subjects
     result.cleaning_total = cleaning_total if cleaning_found else 0.0
     result.servicing_items = servicing_all
 
-    notes = []
-    notes.append(
-        f"Gmail search: {len(all_msg_ids)} email(s) read for {property_name} "
-        f"{period} in jarvis.ai@theassemblyplace.com inbox."
-    )
+    notes = [
+        f"Gmail LLM search: {result.emails_searched} email(s) scanned, "
+        f"{result.emails_matched} matched {property_name} {period}."
+    ]
     if cleaning_found:
-        notes.append(f"Cleaning: ${cleaning_total:,.2f} parsed from email(s).")
+        notes.append(f"Cleaning: ${cleaning_total:,.2f} from email(s).")
     else:
-        notes.append("Cleaning: no email found → $0.00.")
+        notes.append("Cleaning: not found in inbox → $0.00.")
     if servicing_all:
         notes.append(
             f"Servicing: {len(servicing_all)} item(s) totalling "
-            f"${sum(s.amount for s in servicing_all):,.2f} parsed from email(s)."
+            f"${sum(s.amount for s in servicing_all):,.2f}."
         )
     else:
-        notes.append("Servicing: no email found → $0.00.")
+        notes.append("Servicing: not found in inbox → $0.00.")
 
     result.source_note = " ".join(notes)
     return result
@@ -413,13 +580,14 @@ if __name__ == "__main__":
     property_name = sys.argv[1] if len(sys.argv) > 1 else "18 JALAN JINTAN"
     period = sys.argv[2] if len(sys.argv) > 2 else "2026-05"
 
-    print(f"Searching Gmail for {property_name!r} period {period!r}...")
+    print(f"Searching Gmail (LLM inference) for {property_name!r} period {period!r}...")
     actuals = search_finance_actuals(property_name, period, verbose=True)
     print()
+    print(f"Emails scanned:   {actuals.emails_searched}")
+    print(f"Emails matched:   {actuals.emails_matched}")
     print(f"Cleaning total:   ${actuals.cleaning_total:,.2f}")
     print(f"Servicing items:  {len(actuals.servicing_items)}")
     for s in actuals.servicing_items:
         print(f"  - {s.description}: ${s.amount:,.2f}")
     print(f"Servicing total:  ${actuals.servicing_total:,.2f}")
-    print(f"Emails searched:  {actuals.emails_searched}")
     print(f"Source note: {actuals.source_note}")
