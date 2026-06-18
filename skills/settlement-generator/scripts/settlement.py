@@ -5,10 +5,13 @@ TAP Settlement Generator — per-property owner settlement letter
 Generates an xlsx in Finance's exact template format, sourced from:
   - CRM tenant roster for the property + period (JSON file)
   - Xero P&L for the property + period (JSON file)
+  - Gmail inbox of jarvis.ai@theassemblyplace.com (cleaning + servicing actuals)
 
-Cleaning, utilities, security deposits, and servicing remain as yellow input
-cells — that matches Finance's existing template and lets the human owner of
-the file fill those during review.
+Gmail auto-source (--gmail-search):
+  Finance team emails cleaning + servicing actuals to jarvis.ai@theassemblyplace.com.
+  When --gmail-search is set, the script searches that inbox for the property+period
+  and auto-populates cleaning and servicing rows. If no email is found → $0 (not yellow).
+  Requires env vars: JARVIS_GOOGLE_REFRESH_TOKEN (+ CLIENT_ID + CLIENT_SECRET).
 
 Bundled samples (use --sample):
   18jln_jintan-mar26       Full month, validated against Finance's actual file
@@ -18,7 +21,17 @@ Usage:
   # Demo with bundled March 2026 sample
   python3 settlement.py --sample 18jln_jintan-mar26 --output out.xlsx
 
-  # With your own data files
+  # With Gmail auto-source for cleaning + servicing
+  python3 settlement.py \\
+    --property "18 JALAN JINTAN" \\
+    --landlord "Yeoh Joe Wei Evelyn" \\
+    --period 2026-05 \\
+    --roster ./crm_roster.json \\
+    --xero ./xero_pnl.json \\
+    --gmail-search \\
+    --output settlement_may26.xlsx
+
+  # With your own data files (no Gmail)
   python3 settlement.py \\
     --property "18 JALAN JINTAN" \\
     --landlord "Yeoh Joe Wei Evelyn" \\
@@ -69,6 +82,18 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
 HERE = Path(__file__).resolve().parent
+# Lazy import of gmail_search — only needed when --gmail-search is used.
+def _import_gmail_search():
+    import importlib.util, sys as _sys
+    _name = "gmail_search"
+    if _name in _sys.modules:
+        return _sys.modules[_name]
+    spec = importlib.util.spec_from_file_location(_name, HERE / "gmail_search.py")
+    mod = importlib.util.module_from_spec(spec)
+    _sys.modules[_name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
 SAMPLES_DIR = HERE / "samples"
 DEFAULTS_PATH = HERE / "property_defaults.json"
 
@@ -230,12 +255,16 @@ def write_settlement_letter(
     property_defaults: dict | None = None,
     utility_calc: dict | None = None,
     property_kind: str = "co_living",
+    gmail_actuals=None,  # FinanceActuals | None — from gmail_search.search_finance_actuals()
 ):
     """Write the settlement letter into worksheet `ws`. Returns total payable row index.
 
     property_defaults: optional dict with standing per-property values (cleaning,
     base rent, etc.). When supplied, these rows are pre-populated instead of left
-    as yellow input cells."""
+    as yellow input cells.
+
+    gmail_actuals: when supplied (via --gmail-search), overrides cleaning +
+    servicing rows with Gmail-parsed values. $0 when email not found (never yellow)."""
     property_defaults = property_defaults or {}
 
     col_widths = {"A":5, "B":34, "C":7, "D":18, "E":10, "F":12, "G":12, "H":13, "I":18, "J":14, "K":15}
@@ -346,21 +375,34 @@ def write_settlement_letter(
     mgmt_row = r
     r += 2
 
-    # 3. Cleaning — auto-fill from property_defaults if available, else yellow input
+    # 3. Cleaning — priority: (1) Gmail actuals, (2) property_defaults, (3) yellow input
     ws.cell(row=r, column=1, value=3).alignment = CENTER
-    cleaning_default = (property_defaults.get("cleaning") or {}) if property_defaults else {}
-    cleaning_qty = cleaning_default.get("qty")
-    cleaning_unit = cleaning_default.get("unit_price")
-    if cleaning_qty is not None and cleaning_unit is not None:
-        ws.cell(row=r, column=2, value=f"Less: Cleaning charges for {period_label}")
-        q = ws.cell(row=r, column=9, value=cleaning_qty); q.alignment = CENTER
-        up = ws.cell(row=r, column=10, value=cleaning_unit); up.font = BLUE_FONT; up.alignment = RIGHT; up.number_format = MONEY_FMT
+    if gmail_actuals is not None:
+        # Gmail searched: use parsed amount ($0 if not found in inbox)
+        cleaning_amt = gmail_actuals.cleaning_total
+        label = (
+            f"Less: Cleaning charges for {period_label} — "
+            f"auto-sourced from jarvis.ai inbox "
+            f"({'$0.00 — no email found' if cleaning_amt == 0 else f'${cleaning_amt:,.2f} from Finance email'})"
+        )
+        ws.cell(row=r, column=2, value=label)
+        ws.cell(row=r, column=9, value=1).alignment = CENTER
+        up = ws.cell(row=r, column=10, value=cleaning_amt)
+        up.font = BLUE_FONT; up.alignment = RIGHT; up.number_format = MONEY_FMT
     else:
-        ws.cell(row=r, column=2, value=f"Less: Cleaning charges for {period_label} — communicated via email, fill in here")
-        ws.cell(row=r, column=2).fill = YELLOW_FILL
-        ws.cell(row=r, column=9, value="").fill = YELLOW_FILL
-        ws.cell(row=r, column=10, value="").fill = YELLOW_FILL
-        ws.cell(row=r, column=10).number_format = MONEY_FMT
+        cleaning_default = (property_defaults.get("cleaning") or {}) if property_defaults else {}
+        cleaning_qty = cleaning_default.get("qty")
+        cleaning_unit = cleaning_default.get("unit_price")
+        if cleaning_qty is not None and cleaning_unit is not None:
+            ws.cell(row=r, column=2, value=f"Less: Cleaning charges for {period_label}")
+            q = ws.cell(row=r, column=9, value=cleaning_qty); q.alignment = CENTER
+            up = ws.cell(row=r, column=10, value=cleaning_unit); up.font = BLUE_FONT; up.alignment = RIGHT; up.number_format = MONEY_FMT
+        else:
+            ws.cell(row=r, column=2, value=f"Less: Cleaning charges for {period_label} — communicated via email, fill in here")
+            ws.cell(row=r, column=2).fill = YELLOW_FILL
+            ws.cell(row=r, column=9, value="").fill = YELLOW_FILL
+            ws.cell(row=r, column=10, value="").fill = YELLOW_FILL
+            ws.cell(row=r, column=10).number_format = MONEY_FMT
     ws.cell(row=r, column=11, value=f'=IF(AND(ISNUMBER(I{r}),ISNUMBER(J{r})),-(I{r}*J{r}),0)').number_format = MONEY_FMT
     cleaning_row = r
     r += 2
@@ -443,21 +485,48 @@ def write_settlement_letter(
     pob_row = r
     r += 2
 
-    # 7. Servicing — yellow input
+    # 7. Servicing — Gmail actuals if available, else yellow input
     ws.cell(row=r, column=1, value=7).alignment = CENTER
-    ws.cell(row=r, column=2, value="Servicing items (maintenance) — populate as separate line(s)")
-    ws.cell(row=r, column=2).fill = YELLOW_FILL
-    ws.cell(row=r, column=9, value="").fill = YELLOW_FILL
-    ws.cell(row=r, column=10, value="").fill = YELLOW_FILL
-    ws.cell(row=r, column=11, value=0).number_format = MONEY_FMT
-    serv_row = r
-    r += 2
+    serv_row_start = r
+
+    if gmail_actuals is not None:
+        items = gmail_actuals.servicing_items
+        if items:
+            # One row per servicing item from email
+            for si_idx, si in enumerate(items):
+                if si_idx > 0:
+                    ws.cell(row=r, column=1, value="").alignment = CENTER
+                ws.cell(row=r, column=2, value=f"Less: {si.description}")
+                ws.cell(row=r, column=9, value=1).alignment = CENTER
+                up = ws.cell(row=r, column=10, value=si.amount)
+                up.font = BLUE_FONT; up.alignment = RIGHT; up.number_format = MONEY_FMT
+                ws.cell(row=r, column=11, value=f"=-J{r}").number_format = MONEY_FMT
+                r += 1
+        else:
+            ws.cell(row=r, column=2, value="Less: Servicing items — $0.00 (no email found in jarvis.ai inbox)")
+            ws.cell(row=r, column=9, value=0).alignment = CENTER
+            ws.cell(row=r, column=10, value=0).number_format = MONEY_FMT
+            ws.cell(row=r, column=11, value=0).number_format = MONEY_FMT
+            r += 1
+    else:
+        ws.cell(row=r, column=2, value="Servicing items (maintenance) — populate as separate line(s)")
+        ws.cell(row=r, column=2).fill = YELLOW_FILL
+        ws.cell(row=r, column=9, value="").fill = YELLOW_FILL
+        ws.cell(row=r, column=10, value="").fill = YELLOW_FILL
+        ws.cell(row=r, column=11, value=0).number_format = MONEY_FMT
+        r += 1
+
+    serv_row = serv_row_start
+    serv_row_end = r - 1
+    r += 1  # blank separator
 
     # TOTAL
     ws.cell(row=r, column=10, value="TOTAL").font = BOLD
     ws.cell(row=r, column=10).alignment = RIGHT; ws.cell(row=r, column=10).fill = GREY_FILL
+    serv_ref = (f"SUM(K{serv_row}:K{serv_row_end})"
+                if serv_row_end != serv_row else f"K{serv_row}")
     total_formula = (f"=K{rental_received_row}+K{mgmt_row}+K{cleaning_row}+{util_total_ref}"
-                     f"+K{deposit_row}+K{pob_row}+K{serv_row}")
+                     f"+K{deposit_row}+K{pob_row}+{serv_ref}")
     total_cell = ws.cell(row=r, column=11, value=total_formula)
     total_cell.number_format = MONEY_FMT
     total_cell.font = BOLD
@@ -480,7 +549,7 @@ def write_settlement_letter(
     note_dep_row = r
     r += 1
     ws.cell(row=r, column=2, value="Expenses paid on behalf")
-    ws.cell(row=r, column=11, value=f"={util_total_ref}+K{pob_row}+K{serv_row}").number_format = MONEY_FMT
+    ws.cell(row=r, column=11, value=f"={util_total_ref}+K{pob_row}+{serv_ref}").number_format = MONEY_FMT
     r += 1
     ws.cell(row=r, column=2, value=f"Net amount due to {landlord}").font = BOLD
     nc = ws.cell(row=r, column=11, value=f"=K{total_payable_row}")
@@ -557,6 +626,49 @@ def write_xero_sheet(wb, xero: dict, source_note: str):
         ws.append([k, v])
         ws.cell(row=ws.max_row, column=2).number_format = MONEY_FMT
     ws.column_dimensions["A"].width = 50
+    ws.column_dimensions["B"].width = 16
+
+
+def write_gmail_audit_sheet(wb, gmail_actuals):
+    """Audit trail for Gmail-sourced cleaning + servicing actuals."""
+    ws = wb.create_sheet("Gmail Auto-Source")
+    ws.append(["Gmail auto-source — cleaning + servicing actuals for this settlement"])
+    ws["A1"].font = BOLD
+    ws.merge_cells("A1:E1")
+    ws.append([])
+    ws.append(["Source:", f"jarvis.ai@theassemblyplace.com inbox"])
+    ws.append(["Property:", gmail_actuals.property_name])
+    ws.append(["Period:", gmail_actuals.period])
+    ws.append(["Emails read:", gmail_actuals.emails_searched])
+    ws.append([])
+    ws.append(["CLEANING"])
+    ws.cell(row=ws.max_row, column=1).font = BOLD
+    ws.append(["Total:", gmail_actuals.cleaning_total])
+    ws.cell(row=ws.max_row, column=2).number_format = MONEY_FMT
+    ws.append(["Found:", "Yes" if gmail_actuals.found_cleaning else "No (→ $0.00)"])
+    ws.append([])
+    ws.append(["SERVICING ITEMS"])
+    ws.cell(row=ws.max_row, column=1).font = BOLD
+    if gmail_actuals.servicing_items:
+        ws.append(["Description", "Amount"])
+        for c in ws[ws.max_row]: c.font = BOLD; c.fill = GREY_FILL
+        for si in gmail_actuals.servicing_items:
+            ws.append([si.description, si.amount])
+            ws.cell(row=ws.max_row, column=2).number_format = MONEY_FMT
+        ws.append(["TOTAL", gmail_actuals.servicing_total])
+        ws.cell(row=ws.max_row, column=1).font = BOLD
+        ws.cell(row=ws.max_row, column=2).number_format = MONEY_FMT
+        ws.cell(row=ws.max_row, column=2).font = BOLD
+    else:
+        ws.append(["(none found in inbox → $0.00)"])
+        ws.cell(row=ws.max_row, column=1).font = Font(name=ARIAL, italic=True, size=10)
+    ws.append([])
+    if gmail_actuals.email_subjects:
+        ws.append(["EMAIL SUBJECTS FOUND"])
+        ws.cell(row=ws.max_row, column=1).font = BOLD
+        for subj in gmail_actuals.email_subjects:
+            ws.append([subj])
+    ws.column_dimensions["A"].width = 60
     ws.column_dimensions["B"].width = 16
 
 
@@ -713,6 +825,13 @@ def main():
     ap.add_argument("--xero",   help="Path to Xero P&L JSON")
     ap.add_argument("--utility", help="Path to CRM Excess Utility JSON (optional). When supplied, auto-fills the utility row using the per-unit/per-room cap rule.")
     ap.add_argument("--property-kind", choices=["co_living", "campus"], help="Override property_kind from defaults. 'campus' zeros the utility row (TLKR Campus = company absorbs).")
+    ap.add_argument("--gmail-search", action="store_true",
+                    help="Search jarvis.ai@theassemblyplace.com Gmail inbox for Finance emails "
+                         "with cleaning + servicing actuals for this property+period. "
+                         "Requires JARVIS_GOOGLE_REFRESH_TOKEN env var. "
+                         "If not found → $0 (not yellow).")
+    ap.add_argument("--gmail-user", default="jarvis.ai@theassemblyplace.com",
+                    help="Gmail userId to search (default: jarvis.ai@theassemblyplace.com).")
     ap.add_argument("--output", required=True, help="Output xlsx path")
     args = ap.parse_args()
 
@@ -753,10 +872,46 @@ def main():
     # Compute Excess Utility (if data was supplied)
     utility_calc = compute_excess_utility(utility) if utility else None
 
+    # Gmail search for cleaning + servicing actuals
+    gmail_actuals = None
+    if getattr(args, "gmail_search", False):
+        period_for_search = None
+        if args.period:
+            period_for_search = args.period
+        elif args.sample:
+            # Derive period from sample config if possible
+            cfg_period = SAMPLES.get(args.sample, {}).get("period", "")
+            # e.g. "March 2026" — try to parse back to YYYY-MM
+            try:
+                import datetime
+                pd = datetime.datetime.strptime(cfg_period, "%B %Y")
+                period_for_search = pd.strftime("%Y-%m")
+            except Exception:
+                period_for_search = None
+
+        if period_for_search:
+            print(f"  [gmail_search] searching jarvis.ai inbox for {prop!r} {period_for_search}...")
+            gs_mod = _import_gmail_search()
+            gmail_actuals = gs_mod.search_finance_actuals(
+                prop,
+                period_for_search,
+                user_id=args.gmail_user,
+                verbose=True,
+            )
+            print(f"  [gmail_search] cleaning=${gmail_actuals.cleaning_total:,.2f}  "
+                  f"servicing=${gmail_actuals.servicing_total:,.2f}  "
+                  f"emails_read={gmail_actuals.emails_searched}")
+        else:
+            print("  [gmail_search] WARNING: --gmail-search requires --period (YYYY-MM); skipping.")
+
     # Build workbook
     wb = Workbook()
     ws = wb.active
     ws.title = f"Settlement {period_label[:24]}"
+
+    gmail_source_note = (
+        f"\nGmail auto-source: {gmail_actuals.source_note}" if gmail_actuals else ""
+    )
     write_settlement_letter(
         ws,
         landlord=landlord,
@@ -770,6 +925,7 @@ def main():
         property_defaults=defaults,
         utility_calc=utility_calc,
         property_kind=property_kind,
+        gmail_actuals=gmail_actuals,
         source_note=(
             f"Tenant roster: CRM Reports → Settlement, property={prop}, period {period_label}.\n"
             f"Xero P&L: TAP Co-Livings, Location={prop}, period {period_label}.\n"
@@ -777,7 +933,10 @@ def main():
             f"Property kind: {property_kind}.\n"
             f"Tenant-side excess utility: {'computed — see Tenant Excess Utility sheet' if utility_calc else 'no data supplied'}.\n"
             f"Owner-side utility row: yellow input (formula pending Finance verification; backtest 20 May 2026 vs Feb/Mar Finance files showed our tenant-side rule does NOT match owner-line numbers).\n"
-            f"Remaining yellow cells: Finance input or pending data sources."
+            + (f"Gmail auto-source (cleaning + servicing): {gmail_actuals.source_note}\n"
+               if gmail_actuals else
+               "Cleaning + servicing: yellow input (run with --gmail-search to auto-populate from jarvis.ai inbox).\n")
+            + "Remaining yellow cells: Finance input or pending data sources."
         ),
     )
 
@@ -786,6 +945,8 @@ def main():
     if utility_calc:
         write_utility_detail_sheet(wb, utility_calc, utility,
                                    f"Excess Utility detail — {prop} — {period_label}")
+    if gmail_actuals:
+        write_gmail_audit_sheet(wb, gmail_actuals)
 
     out_path = Path(args.output)
     wb.save(out_path)
@@ -795,6 +956,11 @@ def main():
     print(f"  Period:   {period_label}")
     print(f"  Tenants:  {len(roster)}")
     print(f"  Kind:     {property_kind}")
+    if gmail_actuals:
+        print(f"  Cleaning (Gmail): ${gmail_actuals.cleaning_total:,.2f}")
+        print(f"  Servicing (Gmail): ${gmail_actuals.servicing_total:,.2f} "
+              f"({len(gmail_actuals.servicing_items)} item(s))")
+        print(f"  Gmail emails read: {gmail_actuals.emails_searched}")
     if utility_calc:
         print(f"  Tenant excess: ${utility_calc['total_excess']:,.2f} across "
               f"{len(utility_calc['units'])} unit(s), {utility_calc['total_tenants']} tenants "

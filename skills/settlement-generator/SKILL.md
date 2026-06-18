@@ -79,11 +79,11 @@ Output is an xlsx with these sheets:
 | Tenant roster (name, room, rate, lease dates) | CRM Reports → Settlement | ✅ |
 | Management fee (15%) + commission (1 month / 24) | Computed | ✅ |
 | Base rent + additional rent to owner | Xero P&L (Straight Lease - Rental of premises, Rental of premises) | ✅ |
-| Cleaning charges | property_defaults.json (when standing) or Finance email | ✅ for 18 Jln Jintan; ⏳ yellow cell otherwise |
+| **Cleaning charges** | Gmail (jarvis.ai inbox) when `--gmail-search` used; `property_defaults.json` fallback; else yellow | ✅ with `--gmail-search`; $0 if not found in inbox (not yellow) |
+| **Servicing items** | Gmail (jarvis.ai inbox) when `--gmail-search` used | ✅ with `--gmail-search`; $0 if not found in inbox (not yellow) |
 | **Utilities (Excess Utility rule)** | CRM Operations → Excess Utility | ✅ when `--utility` JSON supplied; auto-zero for `property_kind=campus`; ⏳ yellow cell otherwise |
 | Security deposits net | Xero Deposit Received Transactions | ⏳ Pending Xero MCP integration |
 | Payment on behalf (Whiz subscriptions etc.) | Xero Account Transactions filtered to Location | ✅ partial — current month only; back-bill window pending |
-| Servicing items | Maintenance ticket system | ⏳ Manual — yellow cell |
 
 ## Excess Utility — calculation rule
 
@@ -126,6 +126,60 @@ python3 ./scripts/settlement.py \
   --utility crm_utility_mar.json \
   --output settlement_mar26.xlsx
 ```
+
+## Gmail auto-source — cleaning + servicing
+
+**Convention (per Sebastien, THE-17480):** Finance team emails cleaning and servicing actuals to `jarvis.ai@theassemblyplace.com`. From June 2026 onwards, `--gmail-search` is the standard flag for all settlement runs.
+
+- **Found** → parsed dollar amount(s) used directly.
+- **Not found** → `$0.00` in the cell (no yellow). Yellow is reserved for "source not yet searched".
+
+### Setup
+
+Add env var `JARVIS_GOOGLE_REFRESH_TOKEN` to the Finance Lead agent (separate from `GOOGLE_REFRESH_TOKEN` which is William's personal token). See [THE-17480](/THE/issues/THE-17480) for the OAuth mint instructions.
+
+```
+JARVIS_GOOGLE_CLIENT_ID     = 588437766403-...
+JARVIS_GOOGLE_CLIENT_SECRET = GOCSPX-...
+JARVIS_GOOGLE_REFRESH_TOKEN = 1//...   (minted for jarvis.ai@theassemblyplace.com)
+```
+
+Falls back to `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REFRESH_TOKEN` if `JARVIS_*` vars are not set.
+
+### Run with Gmail auto-source
+
+```bash
+# Standard run — cleaning + servicing auto-populated from jarvis.ai inbox
+python3 ./scripts/settlement.py \
+  --property "18 JALAN JINTAN" \
+  --landlord "Yeoh Joe Wei Evelyn" \
+  --period 2026-05 \
+  --roster crm_may.json --xero xero_may.json \
+  --gmail-search \
+  --output settlement_may26.xlsx
+
+# Different Gmail target (e.g. testing against another account)
+python3 ./scripts/settlement.py \
+  --property "18 JALAN JINTAN" --period 2026-05 \
+  --roster ... --xero ... \
+  --gmail-search --gmail-user me \
+  --output test.xlsx
+```
+
+The output xlsx gains a **Gmail Auto-Source** audit sheet listing which emails were found and what amounts were parsed.
+
+### Email format
+
+Finance team sends emails to `jarvis.ai@theassemblyplace.com`. The parser looks for lines containing:
+- **Cleaning**: line contains "cleaning" + a dollar amount (e.g. `$720`, `S$720`, `SGD 720.00`)
+- **Servicing**: line contains "servicing", "maintenance", "repair", "aircon", "pest", or "plumb" + a dollar amount
+
+Multiple servicing items (on separate lines) are supported — each gets its own row in the settlement letter.
+
+**Open questions for Finance (pending Sebastien confirmation):**
+- Exact email subject/sender convention (so search query can be tightened)
+- Whether multiple servicing items can span multiple emails per month
+- Whether the $720/month cleaning standing table (`property_defaults.json`) is now fully superseded by per-month actuals
 
 ## Validation history
 
