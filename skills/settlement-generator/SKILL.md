@@ -130,14 +130,26 @@ python3 ./scripts/settlement.py \
 
 ## Gmail auto-source — cleaning + servicing
 
-**Convention (per Sebastien, THE-17480):** Finance team emails cleaning and servicing actuals to `jarvis.ai@theassemblyplace.com`. From June 2026 onwards, `--gmail-search` is the standard flag for all settlement runs.
+**Architecture (Sebastien, THE-17480):** This is an **always-on inbox watcher + classifier → structured store** system. Settlement runs read from the store — they do NOT scan email at xlsx-build time.
 
-- **Found** → parsed dollar amount(s) used directly.
-- **Not found** → `$0.00` in the cell (no yellow). Yellow is reserved for "source not yet searched".
+```
+jarvis.ai Gmail inbox
+       │
+       ▼  (every 15 min)
+inbox_watcher.py ──→ email_classifier.py (Claude Haiku)
+       │                    │
+       │                    ├── Finance email → actuals_store.py → Notion DB
+       │                    ├── Ops email     → ops_routing_stub() [v1: log only]
+       │                    └── Neither       → skip
+       │
+settlement.py ──→ gmail_search.py ──→ actuals_store.py ──→ Notion DB query
+```
+
+**Not found → `$0.00`, never yellow.** Yellow is reserved for "source not yet searched at all".
 
 ### Setup
 
-Add env var `JARVIS_GOOGLE_REFRESH_TOKEN` to the Finance Lead agent (separate from `GOOGLE_REFRESH_TOKEN` which is William's personal token). See [THE-17480](/THE/issues/THE-17480) for the OAuth mint instructions.
+#### 1. OAuth credentials (jarvis.ai@theassemblyplace.com)
 
 ```
 JARVIS_GOOGLE_CLIENT_ID     = 588437766403-...
@@ -145,12 +157,51 @@ JARVIS_GOOGLE_CLIENT_SECRET = GOCSPX-...
 JARVIS_GOOGLE_REFRESH_TOKEN = 1//...   (minted for jarvis.ai@theassemblyplace.com)
 ```
 
-Falls back to `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REFRESH_TOKEN` if `JARVIS_*` vars are not set.
+See [THE-17484](/THE/issues/THE-17484) for OAuth mint instructions (William / delegation).
 
-### Run with Gmail auto-source
+#### 2. Notion actuals DB
+
+Create a Notion database with these properties:
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| Name | title | auto: "PROPERTY MONTH TYPE" |
+| Property | rich_text | property address |
+| Month | rich_text | "2026-06" |
+| Line Item Type | select | cleaning / servicing / stock / deposits / excess_utility / pob / other |
+| Amount | number | SGD |
+| Description | rich_text | detail text |
+| Source Email ID | rich_text | Gmail message ID |
+| Source Email Subject | rich_text | |
+| Source Email Date | date | |
+| Confidence | number | 0.0–1.0 |
+| Processed At | date | when watcher processed it |
+
+Then set:
+```
+NOTION_API_KEY         = secret_...   (Notion integration token)
+NOTION_ACTUALS_DB_ID   = <database-id-from-URL>
+```
+
+Falls back to a local JSON file at `ACTUALS_STORE_PATH` (default `/data/actuals_store.json`) if Notion env vars are absent.
+
+#### 3. Watcher routine
+
+The inbox watcher runs as a Paperclip routine assigned to Finance Lead, firing every 15 min. See [THE-17492](/THE/issues/THE-17492) — Finance Lead creates this routine for themselves.
+
+### Scripts
+
+| Script | Role |
+| --- | --- |
+| `scripts/inbox_watcher.py` | Polling orchestrator — runs every 15 min via routine |
+| `scripts/email_classifier.py` | Claude Haiku: classify + extract line items per email |
+| `scripts/actuals_store.py` | Notion DB interface (+ JSON fallback) |
+| `scripts/gmail_search.py` | Store reader — called by settlement.py at xlsx time |
+
+### Run with actuals auto-source
 
 ```bash
-# Standard run — cleaning + servicing auto-populated from jarvis.ai inbox
+# Standard run — cleaning + servicing auto-populated from Notion store
 python3 ./scripts/settlement.py \
   --property "18 JALAN JINTAN" \
   --landlord "Yeoh Joe Wei Evelyn" \
@@ -158,35 +209,47 @@ python3 ./scripts/settlement.py \
   --roster crm_may.json --xero xero_may.json \
   --gmail-search \
   --output settlement_may26.xlsx
-
-# Different Gmail target (e.g. testing against another account)
-python3 ./scripts/settlement.py \
-  --property "18 JALAN JINTAN" --period 2026-05 \
-  --roster ... --xero ... \
-  --gmail-search --gmail-user me \
-  --output test.xlsx
 ```
 
-The output xlsx gains a **Gmail Auto-Source** audit sheet listing which emails were found and what amounts were parsed.
+The `--gmail-search` flag still works — it now reads from the Notion store instead of scanning Gmail at xlsx time.
 
-### How inference works
+### Classifier — line item types
 
-Finance team emails actuals to `jarvis.ai@theassemblyplace.com`. Subject lines and senders are **not** matched — the system uses LLM inference (Claude Haiku) instead:
+| Type | Maps to | Examples |
+| --- | --- | --- |
+| `cleaning` | Cleaning row | "cleaning charge", "cleaner fee", "housekeeping" |
+| `servicing` | Servicing row(s) | "aircon service", "pest control", "plumbing repair" |
+| `stock` | Stock taken row | "stock vouchers", "supplies" |
+| `deposits` | Deposit rows (settlement.py handles separately) | "security deposit" |
+| `excess_utility` | Utility row (settlement.py handles separately) | "excess utility" |
+| `pob` | POB row (settlement.py handles separately) | "Whiz subscription", "payment on behalf" |
+| `other` | Servicing row (with Finance description) | anything Finance-relevant not fitting above |
 
-1. **Broad pull**: all emails received in `[month start − 7 days, month end + 14 days]` are fetched (up to 50 per run). No subject/sender filters.
-2. **Per-email inference**: Claude Haiku reads each email (body + PDF/xlsx attachments) and returns structured JSON:
-   - `is_relevant` — is this a settlement-related Finance email?
-   - `property_name` — which property does it refer to (as written)?
-   - `cleaning` — cleaning charge in SGD (null if not mentioned)
-   - `servicing_items` — list of `{description, amount}` for each servicing line item
-3. **Property matching**: the inferred property name is normalised and matched against the target. Emails mentioning a different property are skipped.
-4. **Aggregation**: cleaning totals and servicing items are summed across all matching emails (a property's settlement may span multiple emails).
+### Manual watcher test
 
-**Attachment support**: PDF and xlsx attachments are parsed and included in the inference context. Up to 3 PDFs per email are sent to Claude as documents.
+```bash
+# Dry-run: classify but don't write to store
+python3 ./scripts/inbox_watcher.py --dry-run --verbose
 
-**Robust to**: arbitrary subjects, multiple Finance senders, forwarded threads, varied phrasing ("cleaning charge", "cleaner", "house cleaning"), and multiple emails per property per month.
+# Backfill: process all emails since a given timestamp
+python3 ./scripts/inbox_watcher.py --since 2026-06-01T00:00:00Z --verbose
 
-**Required additional env var**: `ANTHROPIC_API_KEY` — used for Claude Haiku inference calls.
+# Read what's in the store for a property+month
+python3 ./scripts/gmail_search.py "18 JALAN JINTAN" 2026-05
+```
+
+### Required env vars (full list)
+
+```
+JARVIS_GOOGLE_CLIENT_ID
+JARVIS_GOOGLE_CLIENT_SECRET
+JARVIS_GOOGLE_REFRESH_TOKEN
+ANTHROPIC_API_KEY
+NOTION_API_KEY
+NOTION_ACTUALS_DB_ID
+WATCHER_STATE_PATH    (default: /data/watcher_state.json)
+ACTUALS_STORE_PATH    (default: /data/actuals_store.json — JSON fallback only)
+```
 
 ## Validation history
 
