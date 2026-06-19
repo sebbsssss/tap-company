@@ -337,10 +337,12 @@ def run_watcher(
     creds = _resolve_credentials()
     if not all(creds.get(k) for k in ("client_id", "client_secret", "refresh_token")):
         print(
-            "[inbox_watcher] ERROR: Missing JARVIS_GOOGLE_CLIENT_ID / "
-            "JARVIS_GOOGLE_CLIENT_SECRET / JARVIS_GOOGLE_REFRESH_TOKEN"
+            "[inbox_watcher] INFO: JARVIS Gmail credentials not yet provisioned "
+            "(JARVIS_GOOGLE_CLIENT_ID / JARVIS_GOOGLE_CLIENT_SECRET / "
+            "JARVIS_GOOGLE_REFRESH_TOKEN). Skipping run — will retry next schedule. "
+            "Pending: mint jarvis.ai@theassemblyplace.com OAuth token (THE-17484)."
         )
-        sys.exit(1)
+        sys.exit(0)
 
     try:
         access_token = _get_access_token(
