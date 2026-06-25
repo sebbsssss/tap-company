@@ -66,6 +66,20 @@ app = FastAPI(title="tap-meter-intake", version="0.5.0")
 _SEEN_EVENTS: dict[str, float] = {}
 _DEDUP_TTL = 300.0  # seconds — covers all Zernio retry windows
 
+# Zernio account IDs for number routing.
+# This webhook fires for ALL accounts in the workspace; only METER should run the meter flow.
+_METER_ACCOUNT_ID = "6a2a31ab5f7d1751ab79f346"   # +1 856-447-1082
+_FINANCE_ACCOUNT_ID = "6a3b387a9d9472faaecbc09a"  # +1 775-773-9261
+
+
+def _account_route(account_id: str) -> str:
+    """Return 'meter', 'finance', or 'ignore' based on Zernio destination account."""
+    if account_id == _METER_ACCOUNT_ID:
+        return "meter"
+    if account_id == _FINANCE_ACCOUNT_ID:
+        return "finance"
+    return "ignore"
+
 
 def _ack_event(event_id: str) -> bool:
     """Register event_id. Returns True if already seen (duplicate)."""
@@ -460,6 +474,17 @@ async def zernio_webhook(request: Request, background_tasks: BackgroundTasks) ->
     if event_id and _ack_event(event_id):
         _log("info", "webhook_deduped", event_id=event_id[:16])
         return JSONResponse({"status": "already_accepted"}, status_code=200)
+
+    # Route by destination account — this webhook fires for ALL numbers on the workspace.
+    inbound_account_id = (body.get("account") or {}).get("id") or ""
+    route = _account_route(inbound_account_id)
+    if route == "finance":
+        # TODO: route to finance FAQ handler once wired
+        _log("info", "webhook_finance_parked", account_id=inbound_account_id)
+        return JSONResponse({"status": "parked", "route": "finance"}, status_code=200)
+    if route == "ignore":
+        _log("warn", "webhook_unknown_account_ignored", account_id=inbound_account_id)
+        return JSONResponse({"status": "ignored", "account_id": inbound_account_id}, status_code=200)
 
     # Accept immediately; process in thread pool (Zernio expects fast 200)
     background_tasks.add_task(_process_message, body, _dry_run())
