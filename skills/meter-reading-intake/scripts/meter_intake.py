@@ -56,6 +56,7 @@ from utility_log import append_reading
 from daily_digest import start_digest_scheduler
 from sweeper import start_sweeper
 from zernio_client import _log, download_image, ensure_webhook, send_reply
+from concierge import handle_finance_message
 
 _GIT_SHA = "pending"  # updated per deploy
 app = FastAPI(title="tap-meter-intake", version="0.5.0")
@@ -431,6 +432,15 @@ def _process_message_inner(event: dict, dry_run: bool) -> None:  # noqa: C901
          delta=delta, property_unverified=state.get("property_unverified", False))
 
 
+def _run_concierge(parsed_event: dict, conversation_id: str, account_id: str, dry_run: bool) -> None:
+    """Background task wrapper for handle_finance_message — catches all errors."""
+    try:
+        handle_finance_message(parsed_event, conversation_id, account_id, dry_run)
+    except Exception as exc:
+        _log("error", "concierge_unhandled", error=str(exc)[:300])
+        _traceback.print_exc(file=sys.stderr)
+
+
 @app.post("/webhook/zernio")
 async def zernio_webhook(request: Request, background_tasks: BackgroundTasks) -> JSONResponse:
     raw_body = await request.body()
@@ -479,9 +489,16 @@ async def zernio_webhook(request: Request, background_tasks: BackgroundTasks) ->
     inbound_account_id = (body.get("account") or {}).get("id") or ""
     route = _account_route(inbound_account_id)
     if route == "finance":
-        # TODO: route to finance FAQ handler once wired
-        _log("info", "webhook_finance_parked", account_id=inbound_account_id)
-        return JSONResponse({"status": "parked", "route": "finance"}, status_code=200)
+        # Tenant Concierge — FAQ + ticket + escalate (see concierge.py)
+        parsed = _parse_event(body)
+        background_tasks.add_task(
+            _run_concierge,
+            parsed,
+            parsed["conversation_id"],
+            inbound_account_id,
+            _dry_run(),
+        )
+        return JSONResponse({"status": "accepted", "route": "finance"}, status_code=200)
     if route == "ignore":
         _log("warn", "webhook_unknown_account_ignored", account_id=inbound_account_id)
         return JSONResponse({"status": "ignored", "account_id": inbound_account_id}, status_code=200)
